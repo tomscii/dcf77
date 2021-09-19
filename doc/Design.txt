@@ -1,0 +1,257 @@
+# DCF77 clock
+Planned features:
+- DCF77-driven
+	- HH:MM:SS, YY.mm.dd, day-of-week
+- programmable alarm sound
+- stopwatch
+- adjustable backlight
+- temperature+humidity sensor
+- random number generator (6 digits simulating one dice each, with numbers 1-6)
+- serial console output (and maybe input) via FTDI header
+- powered by 3x AAA batteries
+
+DCF77 receiver module
+https://www.conrad.com/p/dcf-receiver-module-641138-suitable-for-series-c-control-641138
+(we already have one, and it works!)
+
+ATMEGA328P developer board, Arduino Nano-compatible, with soldered pins
+https://www.electrokit.com/produkt/utvecklingskort-atmega328p-nano-kompatibelt-monterat/ 79.00 kr
+
+(ATMEGA328P developer board, Arduino Nano-compatible, WITHOUT soldered pins
+https://www.electrokit.com/produkt/utvecklingskort-atmega328p-nano-kompatibelt/ 79.00 kr)
+
+(LCD 0.5" 6-digit 7-segment reflective
+https://www.electrokit.com/produkt/lcd-0-5-6-siffror-reflective/ 67.50 kr)
+
+(LCD 0.5" 6-digit 7-segment transmissive
+https://www.electrokit.com/produkt/lcd-0-5-6-siffror-transmissive/ 39.00 kr)
+
+LCD 0.5" 6-digit 7-segment transflective
+https://www.electrokit.com/produkt/lcd-0-5-6-siffror-transflective/ 73.75 kr
+
+74HC595 DIP-16 8-bit shift register with output latches
+https://www.electrokit.com/produkt/74hc595-dip-16-8-bit-shift-register-with-output-latches/
+53.10 kr (10 pcs.)
+https://www.electrokit.com/produkt/dil-hallare-16-pin/ 2.00 kr (x6)
+
+ATmega328p
+https://www.electrokit.com/produkt/atmega328p-pu-dip-28n-8-bit-mcu-flash-32k-picopower/
+39.00 kr (x3)
+https://www.electrokit.com/produkt/dil-hallare-28-pin-0-3/ 3.50 kr
+
+Piezo (buzzer)
+https://www.electrokit.com/produkt/piezoelement-o12x5-5mm/ 15.00 kr
+
+Tryckknapp PCB
+https://www.electrokit.com/produkt/tryckknapp-pcb-12x12x8mm/ 9.00 kr (x4)
+
+Temp+humidity sensor
+https://www.electrokit.com/produkt/temp-fuktsensor-rht03/ 99.00 kr
+connector on mainboard to hold it near the backside
+https://www.electrokit.com/produkt/hylslist-2-54mm-1x4p-vinklad/ 9.00 kr
+
+Battery holder
+https://www.electrokit.com/produkt/batterihallare-3xaaa-kabel/ 15.00 kr
+https://www.electrokit.com/produkt/jst-rcy-sats-med-hane-hona/ 8.00 kr
+Megj.: PCB-be forrasztott derekszogu 2 polusu tuskesorra megy az aljzat, elemtartora a dugo.
+
+(https://www.electrokit.com/produkt/batterihallare-3xaaa-med-strombrytare-och-jst-kontakt/
+29.00 kr
+https://www.electrokit.com/produkt/stiftlist-ph-2-pol-2-0mm-vinklad/ 2.60 kr
+PH2 angled socket soldered on bottom of main board. Hole on the back of the box allows battery holder's connector to enter the unit, and connect to the board.)
+
+(Alternativ, nagy elemtarto:
+https://www.electrokit.com/produkt/batterihallare-3xaa-sladdanslutning/ (58x48x17) 10.00 kr
+https://www.electrokit.com/produkt/jst-rcy-sats-med-hane-hona/ 8.00 kr
+Megj.: PCB-be forrasztott derekszogu 2 polusu tuskesorra megy az aljzat, elemtartora a dugo.)
+
+Proto-board
+https://www.electrokit.com/produkt/experimentkort-for-pc002/ 30.00 kr
+(https://www.electrokit.com/produkt/experimentkort-for-41015692/ 29.0 kr)
+
+Doboz
+https://www.electrokit.com/produkt/apparatlada-pc002-med-haltagning-gra/ (85x50x21) 15.00 kr
+(https://www.electrokit.com/produkt/apparatlada-gra-100x60x25mm/ (100x60x25) 25.00 kr)
+
+## IO port usage
+
+- port X:
+	- bit 0-5: 6-bit parallel output into 6 shifted lines (6x8 bits) driving LCD segment pins
+	  (Further 6 bits can be obtained from directly using the LCD DATA output of our MCU.)
+  - bit 6: CLK (all 74HC595 chips' SH_CP and ST_CP pins in one)
+	- bit 7: OE (Output Enable) of all 6 shift registers
+	  Note: we might not need this (wire to enable instead); we can put the LCD COM pin in tri-state.
+- port Y:
+	- bit 0: output, drives LCD module COM (common) pin
+  - bit 1: drive background lighting LEDs (TODO provision 3 pins for RGB)
+  - bit 2: output, drives buzzer
+  - bit 3: input/output, connected to DHT22 sensor's DATA signal
+  - bit 4: input from DCF77 receiver module
+  - bit 5-7: input from 3 pushbuttons
++ UART RX, TX
+
+1 - PC6 - RESET/ (AVRPROG)
+2 - PD0 - RXD - to FTDI pin 4 (orange-TXD)
+3 - PD1 - TXD - to FTDI pin 5 (yellow-RXD)
+4 - PD2 - PiezoBuzzer
+5 - PD3 - OC2B - PWM - LED R
+6 - PD4
+7 - VCC (POWER)
+8 - GND (POWER)
+9 - XTAL1 (OSC)
+10 - XTAL2 (OSC)
+11 - PD5 - OC0B - PWM - LED G
+12 - PD6 - OC0A - PWM - LED B
+13 - PD7 - DHT22 DATA I/O
+14 - PB0
+
+15 - PB1
+16 - PB2 - DCF77 S-
+17 - PB3 - BUTTON0 + MOSI (AVRPROG)
+18 - PB4 - BUTTON1 + MISO (AVRPROG)
+19 - PB5 - BUTTON2 + SCK (AVRPROG)
+20 - AVCC (POWER)
+21 - AREF (POWER)
+22 - GND (POWER)
+23 - PC0 - LCD DATA0
+24 - PC1 - LCD DATA1
+25 - PC2 - LCD CLK
+26 - PC3 - LCD COM
+27 - PC4 - LCD OE/
+28 - PC5
+
+## Component placement
+Fit the processor on the same board as the display driver shift registers.
+We only need sockets for the LCD module (2x25-pin socket rails near the long edges of the board) so we can remove the LCD and access the microchips underneath.
+
+TODO power supply will be 2xAA instead of 3xAAA
+(much lower power consumption on a larger capacity battery pack)
+
+TODO buzzer on a pwm output pin?
+
+TODO use only two pins for LCD DATA, feeding 3 cascaded shift registers each.
+Move these two pins to places that afford short connections to the shift register inputs.
+We gain pins we can use to provide switchable power supply to the DCF77 and DHT22 modules.
+
+## Literature
+
+ATmega328p datasheet: https://www.electrokit.com/uploads/productfile/40360/doc8161.pdf
+Getting started guide: https://github.com/amirbawab/AVR-cheat-sheet
+
+## Development
+
+$ apt-get install gcc-avr binutils-avr avr-libc gdb-avr avrdude
+
+$ avrdude -c usbtiny -p atmega328p
+avrdude: AVR device initialized and ready to accept instructions
+Reading | ################################################## | 100% 0.06s
+avrdude: Device signature = 0x1e950f (probably m328p)
+avrdude: safemode: Fuses OK (E:FF, H:D9, L:62)
+avrdude done.  Thank you.
+
+$ cat blink.c 
+#ifndef F_CPU
+#define F_CPU 1000000UL
+#endif
+
+#include <avr/io.h>
+#include <util/delay.h>
+
+int main(void) {
+        DDRC |= (1 << PC5);
+        while (1) {
+
+                // Toggle LED at port PC5
+                PORTC ^= (1 << PC5);
+
+                // Delay for 500ms
+                _delay_ms(500);
+        }
+        return 0;
+}
+
+$ avr-gcc -Wall -g -Os -mmcu=atmega328p -o blink.bin blink.c
+$ avr-objcopy -j .text -j .data -O ihex blink.bin blink.hex
+$ avrdude -c usbtiny -p atmega328p -U flash:w:blink.hex
+
+Device signature: 1E 95 0F = 0001 1110 1001 0101 0000 1111
+
+To change the clock to using 40kHz crystal, program 0xE5 as the lower fuse bit value by adding -Ulfuse:w:0xe5:m to the avrdude command line. (Also change F_CPU above to 40000UL.)
+
+Attention: from this point, use a low bitclock (-B 10kHz) or else the device won't answer!
+Complete command line:
+$ avrdude -c usbtiny -p atmega328p -B 10kHz -U flash:w:blink.hex -Ulfuse:w:0xe5:m
+
+# Aux Supplies
+Forraszfelszívó rézsodrony, hogy ki tudjam forrasztani a dcf77 modulra rakott csatit. A helyére tüskesor kerül, ami a főkártyán levő aljzatba csatlakozik.
+https://www.electrokit.com/produkt/lodflata-2-7mm/ 35.00 kr
+Fokartya aljzat (hatoldalon, hogy a dcf77 panel vele parhuzamos legyen):
+https://www.electrokit.com/produkt/hylslist-2-54mm-1x8p-vinklad/ 15.00 kr
+
+Forrasztoallomas
+https://www.electrokit.com/produkt/lodstation-variabel-effekt-vtss4-ap-2/
+199.00 kr
+
+Sparkfun Pocket AVR programmer
+https://www.electrokit.com/produkt/avr-pocket-programmer/
+199 kr
+Keszulekre programozo csatlakozo:
+https://www.electrokit.com/produkt/idc-hane-pcb-6-pol-2-54mm/ 6.00 kr
+https://www.electrokit.com/produkt/idc-hane-pcb-10-pol-2-54mm/ 5.04 kr
+(https://www.electrokit.com/produkt/idc-hane-pcb-10-pol-vinklad-2-54mm/ 6.50 kr)
+Megj.: valoszinuleg nem fer el egyik sem, sima 2x3-polusu tuskesor lesz beforrasztva.
+
+- LEDs
+  https://www.electrokit.com/produkt/led-3mm-rod-diffus-1300mcd/ 45.00 kr (10 pcs)
+	https://www.electrokit.com/produkt/led-3mm-orange-diffus-600mcd/ 45.00 kr (10 pcs)
+	https://www.electrokit.com/produkt/led-3mm-gron-diffus-70mcd/ 45.00 kr (10 pcs)
+	https://www.electrokit.com/produkt/led-5mm-rod-diffus-1500mcd/ 5.00 kr
+	https://www.electrokit.com/produkt/led-5mm-orange-diffus-700mcd/ 5.00 kr
+	https://www.electrokit.com/produkt/led-5mm-gron-diffus-80mcd/ 5.00 kr
+	https://www.electrokit.com/produkt/led-5mm-rgb-diffus-cc/ 6.00 kr
+
+- Clock quartz, various freqs
+  https://www.electrokit.com/produkt/kristall-16-0000-mhz-hc49-s/ 12.00 kr
+  https://www.electrokit.com/produkt/kristall-8-000-mhz-hc-49-u-30-pf/ 12.00 kr
+	https://www.electrokit.com/produkt/kristall-8-000mhz-o3x8mm-30ppm/ 5.00 kr
+	https://www.electrokit.com/produkt/kristall-2mhz-hc-49-u/ 19.00 kr
+	https://www.electrokit.com/produkt/kristall-100khz-o2x6mm-15pf-100ppm/ 25.00 kr
+	https://www.electrokit.com/produkt/kristall-40-000khz-o3x8mm/ 15.00 kr
+	https://www.electrokit.com/produkt/kristall-38-000khz-o3x8mm/ 12.00 kr
+
+- Kondensatorsats keramisk 108st
+  https://www.electrokit.com/produkt/kondensatorsats-keramisk-108-st/
+	49.00 kr
+
+- Stiftlist & hylslist
+  https://www.electrokit.com/produkt-kategori/kontaktdon-2/stiftlist-hylslist/2-54mm/
+	- kell 2 db 1x25 aljzat, az LCD modulnak
+	  https://www.electrokit.com/produkt/hylslist-2-54mm-1x40p-svarvad-brytbar/ 15.00 kr x2
+
+    https://www.electrokit.com/produkt/stiftlist-2-54mm-1x40p-brytbar/ 9.00 kr x4
+    https://www.electrokit.com/produkt/stiftlist-2-54mm-1x40p-vinklad-brytbar/ 11.00 kr x2
+		https://www.electrokit.com/produkt/stiftlist-2-54mm-2x40p-brytbar-guld/ 18.00 kr
+		https://www.electrokit.com/produkt/stiftlist-2-54mm-2x40p-vinklad-brytbar/ 19.00 kr
+		https://www.electrokit.com/produkt/hylslist-2-54mm-1x40p/ 19.00 kr x2
+		https://www.electrokit.com/produkt/hylslist-2-54mm-2x20p/ 15.75 kr x2
+
+- Breadboard
+  https://www.electrokit.com/produkt/kopplingsdack-840-anslutningar/ 69.00 kr
+	https://www.electrokit.com/produkt/kopplingstrad-byglar-for-kopplingsdack/ 59.00 kr
+- https://www.electrokit.com/produkt/labbsladd-20-pin-15cm-hona-hane/ 29.00 kr
+- https://www.electrokit.com/produkt/labbsladd-20-pin-15cm-hona-hona/ 29.00 kr
+
+- Kabelskalare
+  https://www.electrokit.com/produkt/kabelskalare-sjalvjusterande-velleman/ 69.00 kr
+
+
+- Kopplingstråd
+  https://www.electrokit.com/produkt/kopplingstrad-entradig-sats-60m/ 149.00 kr
+	https://www.electrokit.com/produkt/kopplingstrad-flertradig-sats-60m/ 149.00 kr
+
+- valami forrasztos proto-board (PCB helyett)
+	https://www.electrokit.com/produkt/experimentkort-for-41015692/
+	https://www.electrokit.com/produkt/experimentkort-1-hal-80x120mm-genomplaterade-hal/
+	https://www.electrokit.com/produkt/experimentkort-1-hal-100x80-fr4/
+	https://www.electrokit.com/produkt/experimentkort-1-hal-100x160-fr4/
+	https://www.electrokit.com/produkt/experimentkort-breadboard-400-hal/

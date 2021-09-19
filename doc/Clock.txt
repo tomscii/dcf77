@@ -1,0 +1,49 @@
+Configuration for 2MHz crystal
+
+CKDIV: 1 (no divisor)
+CKOUT: 1 (not programmed)
+SUT1..0: 01
+CKSEL3..0: 1010
+
+11011010b = 0xda
+
+Additionally, apply a clock prescaler of /2 for 1MHz MCU clock
+Current draw @5V = ~0.2 mA
+
+Additionally, apply a clock prescaler of /8 for 250kHz MCU clock
+Current draw @5V = ~0.1 mA
+
+Additionally, apply a clock prescaler of /16 for 125kHz MCU clock
+Current draw @5V = ~0.084 mA
+Current draw @3V = ~0.032 mA  <-- THIS!
+
+
+Configuration for 40kHz crystal
+
+CKDIV8: 1 (no divisor)
+CKOUT: 1 (not programmed)
+SUT1..0: 10
+CKSEL3..0: 0101
+
+11100101b = 0xe5
+-Ulfuse:w:0xe5:m
+
+-B 10kHz
+
+
+prev. value 0x62 = 01100010b
+- CKDIV8 enabled, no CKOUT, SUT1..0 = 10, CKSEL3..0 = 0010 (calibr.internal RC osc @ 8MHz)
+
+Current draw @5V = ~0.26 mA
+
+
+Configuration for internal 128 kHz osc
+
+CKDIV8: 1 (no divisor)
+CKOUT: 1 (not programmed)
+SUT1..0: 10
+CKSEL3..0: 0011
+
+11100011b = 0xe3
+
+Current draw @5V = ~0.03 mA

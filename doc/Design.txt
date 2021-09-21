@@ -8,7 +8,7 @@ Planned features:
 - temperature+humidity sensor
 - random number generator (6 digits simulating one dice each, with numbers 1-6)
 - serial console output (and maybe input) via FTDI header
-- powered by 3x AAA batteries
+- powered by 2x AA batteries
 
 DCF77 receiver module
 https://www.conrad.com/p/dcf-receiver-module-641138-suitable-for-series-c-control-641138
@@ -51,19 +51,9 @@ connector on mainboard to hold it near the backside
 https://www.electrokit.com/produkt/hylslist-2-54mm-1x4p-vinklad/ 9.00 kr
 
 Battery holder
-https://www.electrokit.com/produkt/batterihallare-3xaaa-kabel/ 15.00 kr
+https://www.electrokit.com/produkt/batterihallare-2xaa-sladd/ 9.00 kr
 https://www.electrokit.com/produkt/jst-rcy-sats-med-hane-hona/ 8.00 kr
 Megj.: PCB-be forrasztott derekszogu 2 polusu tuskesorra megy az aljzat, elemtartora a dugo.
-
-(https://www.electrokit.com/produkt/batterihallare-3xaaa-med-strombrytare-och-jst-kontakt/
-29.00 kr
-https://www.electrokit.com/produkt/stiftlist-ph-2-pol-2-0mm-vinklad/ 2.60 kr
-PH2 angled socket soldered on bottom of main board. Hole on the back of the box allows battery holder's connector to enter the unit, and connect to the board.)
-
-(Alternativ, nagy elemtarto:
-https://www.electrokit.com/produkt/batterihallare-3xaa-sladdanslutning/ (58x48x17) 10.00 kr
-https://www.electrokit.com/produkt/jst-rcy-sats-med-hane-hona/ 8.00 kr
-Megj.: PCB-be forrasztott derekszogu 2 polusu tuskesorra megy az aljzat, elemtartora a dugo.)
 
 Proto-board
 https://www.electrokit.com/produkt/experimentkort-for-pc002/ 30.00 kr
@@ -93,21 +83,21 @@ https://www.electrokit.com/produkt/apparatlada-pc002-med-haltagning-gra/ (85x50x
 1 - PC6 - RESET/ (AVRPROG)
 2 - PD0 - RXD - to FTDI pin 4 (orange-TXD)
 3 - PD1 - TXD - to FTDI pin 5 (yellow-RXD)
-4 - PD2 - PiezoBuzzer
+4 - PD2 - INT0 - DCF77 S-
 5 - PD3 - OC2B - PWM - LED R
-6 - PD4
+6 - PD4 - DCF77 POWER
 7 - VCC (POWER)
 8 - GND (POWER)
 9 - XTAL1 (OSC)
 10 - XTAL2 (OSC)
 11 - PD5 - OC0B - PWM - LED G
-12 - PD6 - OC0A - PWM - LED B
+12 - PD6 - OC0A - PWM - PiezoBuzzer
 13 - PD7 - DHT22 DATA I/O
-14 - PB0
+14 - PB0 - DHT22 POWER
 
 15 - PB1
-16 - PB2 - DCF77 S-
-17 - PB3 - BUTTON0 + MOSI (AVRPROG)
+16 - PB2 - BUTTON0
+17 - PB3 - OC2A - PWM - LED B + MOSI (AVRPROG)
 18 - PB4 - BUTTON1 + MISO (AVRPROG)
 19 - PB5 - BUTTON2 + SCK (AVRPROG)
 20 - AVCC (POWER)
@@ -115,23 +105,14 @@ https://www.electrokit.com/produkt/apparatlada-pc002-med-haltagning-gra/ (85x50x
 22 - GND (POWER)
 23 - PC0 - LCD DATA0
 24 - PC1 - LCD DATA1
-25 - PC2 - LCD CLK
-26 - PC3 - LCD COM
-27 - PC4 - LCD OE/
-28 - PC5
+25 - PC2 - LCD DATA2
+26 - PC3 - LCD CLK
+27 - PC4 - LCD COM
+28 - PC5 - LCD OE/
 
 ## Component placement
 Fit the processor on the same board as the display driver shift registers.
 We only need sockets for the LCD module (2x25-pin socket rails near the long edges of the board) so we can remove the LCD and access the microchips underneath.
-
-TODO power supply will be 2xAA instead of 3xAAA
-(much lower power consumption on a larger capacity battery pack)
-
-TODO buzzer on a pwm output pin?
-
-TODO use only two pins for LCD DATA, feeding 3 cascaded shift registers each.
-Move these two pins to places that afford short connections to the shift register inputs.
-We gain pins we can use to provide switchable power supply to the DCF77 and DHT22 modules.
 
 ## Literature
 
@@ -149,7 +130,7 @@ avrdude: Device signature = 0x1e950f (probably m328p)
 avrdude: safemode: Fuses OK (E:FF, H:D9, L:62)
 avrdude done.  Thank you.
 
-$ cat blink.c 
+$ cat blink.c
 #ifndef F_CPU
 #define F_CPU 1000000UL
 #endif

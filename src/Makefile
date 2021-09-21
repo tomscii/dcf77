@@ -1,5 +1,5 @@
 PRG            = dcf77
-OBJ            = main.o usart.o
+OBJ            = main.o usart.o utils.o
 MCU_TARGET     = atmega328p
 OPTIMIZE       = -Os
 

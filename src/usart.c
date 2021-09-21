@@ -1,8 +1,9 @@
-#include "defines.h"
+#include "common.h"
 #include "usart.h"
 
 #include <avr/interrupt.h>
 #include <avr/io.h>
+#include <avr/power.h>
 
 FILE usart_str = FDEV_SETUP_STREAM (usart_putchar, usart_getchar,
                                     _FDEV_SETUP_RW);
@@ -43,12 +44,14 @@ ISR (USART_TX_vect)
       ++txrp;
    }
    else
-      PORTC ^= _BV (PC5);
+      DEBUG_LED_TOGGLE;
 }
 
 void
 usart_setup ()
 {
+   power_usart0_enable ();
+
    UCSR0A = _BV (U2X0);         // improve precision @ low clock rate
    UCSR0B = _BV (RXCIE0) | _BV (TXCIE0) | _BV (RXEN0) | _BV (TXEN0);
    UCSR0C = _BV (UCSZ01) | _BV (UCSZ00);

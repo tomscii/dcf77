@@ -1,5 +1,7 @@
 PRG            = dcf77
-OBJ            = main.o usart.o utils.o
+SRC            = $(wildcard *.c)
+HDR            = $(wildcard *.h)
+OBJ            = $(SRC:%.c=%.o)
 MCU_TARGET     = atmega328p
 OPTIMIZE       = -Os
 
@@ -19,6 +21,8 @@ OBJCOPY        = avr-objcopy
 OBJDUMP        = avr-objdump
 
 all: $(PRG).elf lst text eeprom
+
+%.o: %.c $(HDR)
 
 $(PRG).elf: $(OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)

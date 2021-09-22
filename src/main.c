@@ -18,8 +18,8 @@
 
 uint8_t jiffies = 0;
 uint8_t seconds = 0;
-uint8_t minutes = 9;
-uint8_t hours = 12;
+uint8_t minutes = 0;
+uint8_t hours = 0;
 
 // Bits set inside ISRs, watched and reset in main loop
 volatile struct
@@ -28,16 +28,13 @@ volatile struct
 }
 intflags;
 
+uint16_t lcd_data [] = { 0, 0, 0 };
+
 ISR (TIMER1_OVF_vect)
 {
    if (++jiffies == F_TICK)
       jiffies = 0;
    intflags.timer1_int = 1;
-}
-
-ISR (TIMER1_COMPB_vect)
-{
-   LCD_OUTPUT_DISABLE;
 }
 
 void
@@ -76,8 +73,7 @@ ioinit (void)
    TCCR1A = _BV (WGM11) | _BV (WGM10);
    TCCR1B = _BV (WGM13) | _BV (WGM12) | _BV (CS10);
    OCR1A = TICK_DIV;
-   OCR1B = 700; // slightly higher than how long the LCD data sending takes
-   TIMSK1 = _BV (OCIE1B) | _BV (TOIE1);
+   TIMSK1 = _BV (TOIE1);
 
    DEBUG_LED_ENABLE_OUTPUT;
 
@@ -91,23 +87,7 @@ main_loop (void)
    {
       intflags.timer1_int = 0;
 
-       #if 0
-         cli();
-         uint16_t t0 = TCNT1;
-         sei();
-       #endif
-
-         lcd_send_data ();
-
-
-       #if 0
-         cli();
-         uint16_t t1 = TCNT1;
-         sei();
-         t1 += TICK_DIV * jiffies;
-         printf (" %d", t1 - t0);
-         // Results: 439, 455. BUDGET: 500 clock cycles
-       #endif
+      lcd_send_frame ();
 
       if (jiffies == 0)
       {
@@ -124,6 +104,9 @@ main_loop (void)
                   hours = 0;
             }
          }
+
+         lcd_data [0] = (minutes << 8) + seconds;
+         lcd_set_bits (lcd_data);
 
          putstr ("\r\n");
          putstr (d2 [hours]);

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "clock.h"
 #include "lcd.h"
 #include "pwm.h"
 #include "usart.h"
@@ -13,29 +14,11 @@
 #include <avr/power.h>
 #include <avr/sleep.h>
 
-#define F_TICK 50
-#define TICK_DIV (F_CPU/F_TICK - 1)
-
-uint8_t jiffies = 0;
-uint8_t seconds = 0;
-uint8_t minutes = 0;
-uint8_t hours = 0;
-
-// Bits set inside ISRs, watched and reset in main loop
-volatile struct
-{
-  uint8_t timer1_int: 1;
-}
-intflags;
-
 uint16_t lcd_data [] = { 0, 0, 0 };
 
-ISR (TIMER1_OVF_vect)
-{
-   if (++jiffies == F_TICK)
-      jiffies = 0;
-   intflags.timer1_int = 1;
-}
+#define INPUT_BUFSIZE 16
+char input [INPUT_BUFSIZE];
+uint8_t input_count;
 
 void
 ioinit (void)
@@ -61,19 +44,11 @@ ioinit (void)
    TWCR &= ~_BV (TWEN);         // disable TWI
 
    power_all_disable ();
-   power_timer1_enable ();
 
+   clock_setup ();
    usart_setup ();
    lcd_setup ();
    pwm_setup ();
-
-   // Timer 1: Fast PWM
-   // WGM=15 -> TOP=OCR1A
-   // clk prescaler: /1
-   TCCR1A = _BV (WGM11) | _BV (WGM10);
-   TCCR1B = _BV (WGM13) | _BV (WGM12) | _BV (CS10);
-   OCR1A = TICK_DIV;
-   TIMSK1 = _BV (TOIE1);
 
    DEBUG_LED_ENABLE_OUTPUT;
 
@@ -81,49 +56,119 @@ ioinit (void)
 }
 
 void
-main_loop (void)
+process_input ()
 {
-   if (intflags.timer1_int)
+   switch (input [input_count - 1])
    {
-      intflags.timer1_int = 0;
+   case '\b': // Backspace key
+      input_count = 0;
+      break;
+   case 's': // set time
+      if (input_count == 5)  // HHMMs
+      {
+         uint8_t hours = 10 * (input [0] - '0') + input [1] - '0';
+         uint8_t minutes = 10 * (input [2] - '0') + input [3] - '0';
+         clock_set (hours, minutes, 0);
+      }
+      else if (input_count == 7)  // HHMMSSs
+      {
+         uint8_t hours = 10 * (input [0] - '0') + input [1] - '0';
+         uint8_t minutes = 10 * (input [2] - '0') + input [3] - '0';
+         uint8_t seconds = 10 * (input [4] - '0') + input [5] - '0';
+         clock_set (hours, minutes, seconds);
+      }
+      input_count = 0;
+      break;
+   case 't': // nudge time forward
+      clock_plus_jiffy ();
+      input_count = 0;
+      break;
+   case 'T': // nudge time backward
+      clock_minus_jiffy ();
+      input_count = 0;
+      break;
+   case 'r': // nudge red channel up
+      pwm_nudge_led (IDX_LED_R, 8);
+      //printf ("[%u]", pwm_get_led (IDX_LED_R));
+      input_count = 0;
+      break;
+   case 'R': // nudge red channel down
+      pwm_nudge_led (IDX_LED_R, -8);
+      //printf ("[%u]", pwm_get_led (IDX_LED_R));
+      input_count = 0;
+      break;
+   case 'g': // nudge green channel up
+      pwm_nudge_led (IDX_LED_G, 8);
+      //printf ("[%u]", pwm_get_led (IDX_LED_G));
+      input_count = 0;
+      break;
+   case 'G': // nudge green channel down
+      pwm_nudge_led (IDX_LED_G, -8);
+      //printf ("[%u]", pwm_get_led (IDX_LED_G));
+      input_count = 0;
+      break;
+   case 'b': // nudge blue channel up
+      pwm_nudge_led (IDX_LED_B, 8);
+      //printf ("[%u]", pwm_get_led (IDX_LED_B));
+      input_count = 0;
+      break;
+   case 'B': // nudge blue channel down
+      pwm_nudge_led (IDX_LED_B, -8);
+      //printf ("[%u]", pwm_get_led (IDX_LED_B));
+      input_count = 0;
+      break;
+   default:
+      break;
+   }
+}
+
+void
+main_loop ()
+{
+   if (clock_flags.tick)
+   {
+      clock_flags.tick = 0;
 
       lcd_send_frame ();
 
-      if (jiffies == 0)
+      if (clock_flags.ovf_jiffies)
       {
-         ++seconds;
-         if (seconds == 60)
-         {
-            seconds = 0;
-            ++minutes;
-            if (minutes == 60)
-            {
-               minutes = 0;
-               ++hours;
-               if (hours == 24)
-                  hours = 0;
-            }
-         }
+         clock_flags.ovf_jiffies = 0;
 
-         lcd_data [0] = (minutes << 8) + seconds;
+         lcd_data [0] = (clock.minutes << 8) + clock.seconds;
          lcd_set_bits (lcd_data);
 
          putstr ("\r\n");
-         putstr (d2 [hours]);
+         putstr (d2 [clock.hours]);
          putstr (":");
-         putstr (d2 [minutes]);
+         putstr (d2 [clock.minutes]);
          putstr (":");
-         putstr (d2 [seconds]);
+         putstr (d2 [clock.seconds]);
       }
+   }
+
+   {
+      int c = getchar ();
+      if (c != EOF)
+      {
+         putchar (c); // echo
+
+         input [input_count] = c;
+         if (input_count < INPUT_BUFSIZE - 1)
+            ++input_count;
+
+         process_input ();
+      }
+      else
+         clearerr (stdin);
    }
 }
 
 int
-main (void)
+main ()
 {
    ioinit ();
 
-   stderr = stdout = stdin = &usart_str;
    puts_P (PSTR ("\r\n\r\nDCF77 booted"));
 
    for (;;)

@@ -4,20 +4,22 @@
 #include <avr/io.h>
 #include <avr/power.h>
 
-#define PIEZO_RESOLUTION 32
-#define PIEZO_DIV (PIEZO_RESOLUTION - 1)
+#define PIEZO_PWM_BITS 4
+#define PIEZO_PWM_COUNT (1 << PIEZO_PWM_BITS)
+#define PIEZO_DIV (PIEZO_PWM_COUNT - 1)
 
-#define PIN_LED_R   PD3
-#define PWM_LED_R   OCR2B
+#define LED_R_PIN   PD3
+#define LED_R_PWM   OCR2B
 
-#define PIN_LED_G   PD5
-#define PWM_LED_G   OCR0B
+#define LED_G_PIN   PD5
+#define LED_G_PWM   OCR0B
 
-#define PIN_LED_B   PB3
-#define PWM_LED_B   OCR2A
+#define LED_B_PIN   PB3
+#define LED_B_PWM   OCR2A
 
-#define PIN_PIEZO   PD6
-#define PWM_PIEZO   OCR0A
+#define PIEZO_DDR   DDRD
+#define PIEZO_PIN   PD6
+#define PIEZO_PWM   OCR0A
 
 static uint8_t pwm_led [3];
 
@@ -28,8 +30,8 @@ pwm_setup ()
    power_timer2_enable ();
 
    // Enable output pins
-   DDRD |= _BV (PIN_LED_R) | _BV (PIN_LED_G) | _BV (PIN_PIEZO);
-   DDRB |= _BV (PIN_LED_B);
+   DDRD |= _BV (LED_R_PIN) | _BV (LED_G_PIN); // piezo initial state is off
+   DDRB |= _BV (LED_B_PIN);
 
    // Timer0: PWM for Buzzer and LED
    // Fast PWM mode:
@@ -38,7 +40,7 @@ pwm_setup ()
    TCCR0A = _BV (COM0A0) | _BV (COM0B1) | _BV (COM0B0) |
             _BV (WGM01) | _BV (WGM00);
    TCCR0B = _BV (WGM02) | _BV (CS00); // No clock prescaler clk/1
-   PWM_PIEZO = PIEZO_DIV; // buzzer freq: F_CPU/2/(PIEZO_DIV+1)
+   PIEZO_PWM = PIEZO_DIV; // buzzer freq: F_CPU/2/PIEZO_PWM_COUNT
 
    // Timer2: PWM for 2 LEDs
    // Fast PWM, non-inverting on OC2A and OC2B for driving LEDs
@@ -69,10 +71,17 @@ pwm_set_led (uint8_t led_ix, uint8_t amount)
    pwm_led [led_ix] = amount;
    switch (led_ix)
    {
-   case IDX_LED_R: PWM_LED_R = 255 - amount; break;
-   case IDX_LED_G: PWM_LED_G = PIEZO_DIV - amount / (256/PIEZO_RESOLUTION); break;
-   case IDX_LED_B: PWM_LED_B = 255 - amount; break;
-   default: break;
+   case IDX_LED_R:
+      LED_R_PWM = 255 - amount;
+      break;
+   case IDX_LED_G:
+      LED_G_PWM = PIEZO_DIV - (amount >> (8 - PIEZO_PWM_BITS));
+      break;
+   case IDX_LED_B:
+      LED_B_PWM = 255 - amount;
+      break;
+   default:
+      break;
    }
 }
 
@@ -85,4 +94,12 @@ pwm_nudge_led (uint8_t led_ix, int8_t amount)
    else if (v < 0)
       v = 0;
    pwm_set_led (led_ix, v);
+}
+
+void pwm_piezo_set (char on)
+{
+   if (on)
+      PIEZO_DDR |= _BV (PIEZO_PIN);
+   else
+      PIEZO_DDR &= ~_BV (PIEZO_PIN);
 }

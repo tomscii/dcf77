@@ -10,6 +10,8 @@
 FILE usart_str = FDEV_SETUP_STREAM (usart_putchar, usart_getchar,
                                     _FDEV_SETUP_RW);
 
+volatile struct usart_flags_t usart_flags;
+
 #define BUFSIZE 32 /* MUST be integer power of 2 */
 #define BUFMASK (BUFSIZE-1)
 
@@ -25,6 +27,7 @@ ISR (USART_RX_vect)
 {
    rxbuf [rxwp & BUFMASK] = UDR0;
    ++rxwp;
+   usart_flags.rx = 1;
 }
 
 ISR (USART_UDRE_vect)

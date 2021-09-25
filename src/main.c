@@ -88,33 +88,35 @@ process_input ()
       input_count = 0;
       break;
    case 'r': // nudge red channel up
-      pwm_nudge_led (IDX_LED_R, 8);
-      //printf ("[%u]", pwm_get_led (IDX_LED_R));
+      pwm_nudge_led (IDX_LED_R, 16);
       input_count = 0;
       break;
    case 'R': // nudge red channel down
-      pwm_nudge_led (IDX_LED_R, -8);
-      //printf ("[%u]", pwm_get_led (IDX_LED_R));
+      pwm_nudge_led (IDX_LED_R, -16);
       input_count = 0;
       break;
    case 'g': // nudge green channel up
-      pwm_nudge_led (IDX_LED_G, 8);
-      //printf ("[%u]", pwm_get_led (IDX_LED_G));
+      pwm_nudge_led (IDX_LED_G, 16);
       input_count = 0;
       break;
    case 'G': // nudge green channel down
-      pwm_nudge_led (IDX_LED_G, -8);
-      //printf ("[%u]", pwm_get_led (IDX_LED_G));
+      pwm_nudge_led (IDX_LED_G, -16);
       input_count = 0;
       break;
    case 'b': // nudge blue channel up
-      pwm_nudge_led (IDX_LED_B, 8);
-      //printf ("[%u]", pwm_get_led (IDX_LED_B));
+      pwm_nudge_led (IDX_LED_B, 16);
       input_count = 0;
       break;
    case 'B': // nudge blue channel down
-      pwm_nudge_led (IDX_LED_B, -8);
-      //printf ("[%u]", pwm_get_led (IDX_LED_B));
+      pwm_nudge_led (IDX_LED_B, -16);
+      input_count = 0;
+      break;
+   case 'p': // piezo on
+      pwm_piezo_set (1);
+      input_count = 0;
+      break;
+   case 'P': // piezo off
+      pwm_piezo_set (0);
       input_count = 0;
       break;
    default:
@@ -147,9 +149,12 @@ main_loop ()
       }
    }
 
+   if (usart_flags.rx)
    {
-      int c = getchar ();
-      if (c != EOF)
+      usart_flags.rx = 0;
+
+      int c;
+      while ((c = getchar ()) != EOF)
       {
          putchar (c); // echo
 
@@ -159,8 +164,7 @@ main_loop ()
 
          process_input ();
       }
-      else
-         clearerr (stdin);
+      clearerr (stdin);
    }
 }
 

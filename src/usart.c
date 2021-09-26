@@ -12,7 +12,7 @@ FILE usart_str = FDEV_SETUP_STREAM (usart_putchar, usart_getchar,
 
 volatile struct usart_flags_t usart_flags;
 
-#define BUFSIZE 32 /* MUST be integer power of 2 */
+#define BUFSIZE 64 /* MUST be integer power of 2, max. 256 */
 #define BUFMASK (BUFSIZE-1)
 
 char txbuf [BUFSIZE];

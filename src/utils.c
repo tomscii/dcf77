@@ -10,7 +10,7 @@ const char* d2[] = {
 };
 
 void
-putstr (const char* str)
+put_str (const char* str)
 {
    const char* p = str;
    while (*p)
@@ -18,4 +18,84 @@ putstr (const char* str)
       putchar (*p);
       ++p;
    }
+}
+
+void put_uint (uint16_t x)
+{
+   char s [6] = { '0', '0', '0', '0', '0', 0 };
+
+   if (x >= 10000)
+   {
+      s [0] = x / 10000;
+      x -= s [0] * 10000;
+      s [0] += '0';
+   }
+   if (x >= 1000)
+   {
+      s [1] = x / 1000;
+      x -= s [1] * 1000;
+      s [1] += '0';
+   }
+   if (x >= 100)
+   {
+      s [2] = x / 100;
+      x -= s [2] * 100;
+      s [2] += '0';
+   }
+   if (x >= 10)
+   {
+      s [3] = x / 10;
+      x -= s [3] * 10;
+      s [3] += '0';
+   }
+   s [4] = '0' + x;
+
+   uint8_t k;
+   for (k = 0; k < 5; ++k)
+   {
+      if (s [k] > '0')
+      {
+         put_str (s + k);
+         break;
+      }
+   }
+}
+
+void
+put_q4_11 (int16_t x)
+{
+   int8_t sign = x < 0 ? -1 : 1;
+   uint16_t integer = sign * x;
+   uint32_t fractional = integer;
+   integer &= 0xf800; // upper 5 bits, incl. sign bit
+   fractional -= integer;
+   integer >>= 11;
+   fractional *= 10000;
+   fractional /= 2048;
+
+   if (sign < 0)
+      putchar ('-');
+   put_uint (integer);
+   putchar ('.');
+   put_uint (fractional);
+}
+
+uint8_t n1bits (uint16_t x)
+{
+   x = (x & 0x5555) + ((x >> 1) & 0x5555);
+   x = (x & 0x3333) + ((x >> 2) & 0x3333);
+   x = (x & 0x0f0f) + ((x >> 4) & 0x0f0f);
+   x = (x & 0x00ff) + ((x >> 8) & 0x00ff);
+
+   return x;
+}
+
+uint16_t revbits (uint16_t x)
+{
+   x = (x & 0x5555) << 1 | (x & 0xAAAA) >> 1;
+   x = (x & 0x3333) << 2 | (x & 0xCCCC) >> 2;
+   x = (x & 0x0F0F) << 4 | (x & 0xF0F0) >> 4;
+   x = (x & 0x00FF) << 8 | (x & 0xFF00) >> 8;
+
+   return x;
 }

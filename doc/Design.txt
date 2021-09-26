@@ -110,6 +110,8 @@ https://www.electrokit.com/produkt/apparatlada-pc002-med-haltagning-gra/ (85x50x
 27 - PC4 - LCD COM
 28 - PC5 - LCD OE/
 
+LED resistors: R 150, G 680, B 470 ohm.
+
 ## Component placement
 Fit the processor on the same board as the display driver shift registers.
 We only need sockets for the LCD module (2x25-pin socket rails near the long edges of the board) so we can remove the LCD and access the microchips underneath.

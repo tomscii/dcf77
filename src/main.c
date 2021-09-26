@@ -5,12 +5,10 @@
 #include "usart.h"
 #include "utils.h"
 
-#include <inttypes.h>
-#include <stdio.h>
+#include <stdint.h>
 
 #include <avr/interrupt.h>
 #include <avr/io.h>
-#include <avr/pgmspace.h>
 #include <avr/power.h>
 #include <avr/sleep.h>
 
@@ -140,12 +138,12 @@ main_loop ()
          lcd_data [0] = (clock.minutes << 8) + clock.seconds;
          lcd_set_bits (lcd_data);
 
-         putstr ("\r\n");
-         putstr (d2 [clock.hours]);
-         putstr (":");
-         putstr (d2 [clock.minutes]);
-         putstr (":");
-         putstr (d2 [clock.seconds]);
+         put_str (d2 [clock.hours]);
+         put_str (":");
+         put_str (d2 [clock.minutes]);
+         put_str (":");
+         put_str (d2 [clock.seconds]);
+         put_str ("\r\n");
       }
    }
 
@@ -173,7 +171,8 @@ main ()
 {
    ioinit ();
 
-   puts_P (PSTR ("\r\n\r\nDCF77 booted"));
+   put_str ("\r\n\r\nDCF77 booted\r\n");
+   clock_adjust (3.78125 * 2048);
 
    for (;;)
    {

@@ -22,6 +22,7 @@ struct clock_flags_t
 extern volatile struct clock_flags_t clock_flags;
 
 void clock_setup ();
+void clock_adjust (int16_t ppm);
 
 void clock_tick ();
 

@@ -4,7 +4,7 @@
 #include <avr/io.h>
 #include <avr/power.h>
 
-#define PIEZO_PWM_BITS 4
+#define PIEZO_PWM_BITS 5
 #define PIEZO_PWM_COUNT (1 << PIEZO_PWM_BITS)
 #define PIEZO_DIV (PIEZO_PWM_COUNT - 1)
 

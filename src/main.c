@@ -1,5 +1,6 @@
 #include "common.h"
 #include "clock.h"
+#include "dht22.h"
 #include "lcd.h"
 #include "pwm.h"
 #include "usart.h"
@@ -11,6 +12,8 @@
 #include <avr/io.h>
 #include <avr/power.h>
 #include <avr/sleep.h>
+
+#include <util/delay.h>
 
 uint16_t lcd_data [] = { 0, 0, 0 };
 
@@ -24,8 +27,8 @@ ioinit (void)
    // set up clock prescaler for MCU clock
    CLKPR = _BV (CLKPCE);
    //CLKPR = _BV (CLKPS0);                  //  /2 -> 1 MHz
-   //CLKPR = _BV (CLKPS1) | _BV (CLKPS0);   //  /8 -> 250 kHz
-   CLKPR = _BV (CLKPS2);                  // /16 -> 125 kHz
+   CLKPR = _BV (CLKPS1) | _BV (CLKPS0);   //  /8 -> 250 kHz
+   //CLKPR = _BV (CLKPS2);                  // /16 -> 125 kHz
 
    // set all IO pins as input, pull-up active
    PORTB = 0xff;
@@ -47,6 +50,7 @@ ioinit (void)
    usart_setup ();
    lcd_setup ();
    pwm_setup ();
+   dht22_setup ();
 
    DEBUG_LED_ENABLE_OUTPUT;
 
@@ -85,28 +89,42 @@ process_input ()
       clock_minus_jiffy ();
       input_count = 0;
       break;
+   case 'm': // measure humidity + temperature sensor
+      dht22_trigger ();
+      _delay_ms (1);
+      dht22_read ();
+      input_count = 0;
+      break;
+   case 'w': // DHT22 power on
+      dht22_power_set (1);
+      input_count = 0;
+      break;
+   case 'W': // DHT22 power off
+      dht22_power_set (0);
+      input_count = 0;
+      break;
    case 'r': // nudge red channel up
-      pwm_nudge_led (IDX_LED_R, 16);
+      pwm_nudge_led (IDX_LED_R, 8);
       input_count = 0;
       break;
    case 'R': // nudge red channel down
-      pwm_nudge_led (IDX_LED_R, -16);
+      pwm_nudge_led (IDX_LED_R, -8);
       input_count = 0;
       break;
    case 'g': // nudge green channel up
-      pwm_nudge_led (IDX_LED_G, 16);
+      pwm_nudge_led (IDX_LED_G, 8);
       input_count = 0;
       break;
    case 'G': // nudge green channel down
-      pwm_nudge_led (IDX_LED_G, -16);
+      pwm_nudge_led (IDX_LED_G, -8);
       input_count = 0;
       break;
    case 'b': // nudge blue channel up
-      pwm_nudge_led (IDX_LED_B, 16);
+      pwm_nudge_led (IDX_LED_B, 8);
       input_count = 0;
       break;
    case 'B': // nudge blue channel down
-      pwm_nudge_led (IDX_LED_B, -16);
+      pwm_nudge_led (IDX_LED_B, -8);
       input_count = 0;
       break;
    case 'p': // piezo on
@@ -172,7 +190,7 @@ main ()
    ioinit ();
 
    put_str ("\r\n\r\nDCF77 booted\r\n");
-   clock_adjust (3.78125 * 2048);
+   clock_adjust (3.8301 * 2048);
 
    for (;;)
    {

@@ -75,7 +75,7 @@ esrec: $(PRG)_eeprom.srec
 
 # Programming speed needs to be adjusted to the target's current clock
 # Rule of thumb: must be less than 1/4 of current MCU clock speed.
-PRGSPEED       = -B 30kHz
+PRGSPEED       = -B 60kHz
 
 # This is mainly concerned with setting up the correct clock configuration.
 FUSEOPTS       = -Ulfuse:w:0xda:m

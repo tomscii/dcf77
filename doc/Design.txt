@@ -83,17 +83,17 @@ https://www.electrokit.com/produkt/apparatlada-pc002-med-haltagning-gra/ (85x50x
 1 - PC6 - RESET/ (AVRPROG)
 2 - PD0 - RXD - to FTDI pin 4 (orange-TXD)
 3 - PD1 - TXD - to FTDI pin 5 (yellow-RXD)
-4 - PD2 - INT0 - DCF77 S-
+4 - PD2 - DHT22 DATA I/O
 5 - PD3 - OC2B - PWM - LED R
-6 - PD4 - DCF77 POWER
+6 - PD4 - DHT22 POWER
 7 - VCC (POWER)
 8 - GND (POWER)
 9 - XTAL1 (OSC)
 10 - XTAL2 (OSC)
 11 - PD5 - OC0B - PWM - LED G
 12 - PD6 - OC0A - PWM - PiezoBuzzer
-13 - PD7 - DHT22 DATA I/O
-14 - PB0 - DHT22 POWER
+13 - PD7 - DCF77 POWER
+14 - PB0 - ICP1 - DCF77 S-
 
 15 - PB1
 16 - PB2 - BUTTON0

@@ -20,6 +20,14 @@ put_str (const char* str)
    }
 }
 
+void put_byte_hex (uint8_t x)
+{
+   static char d [] = { '0', '1', '2', '3', '4', '5', '6', '7',
+                        '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+   putchar (d [x >> 4]);
+   putchar (d [x & 0x0f]);
+}
+
 void put_uint (uint16_t x)
 {
    char s [6] = { '0', '0', '0', '0', '0', 0 };
@@ -51,14 +59,15 @@ void put_uint (uint16_t x)
    s [4] = '0' + x;
 
    uint8_t k;
-   for (k = 0; k < 5; ++k)
+   for (k = 0; k < 4; ++k)
    {
       if (s [k] > '0')
       {
          put_str (s + k);
-         break;
+         return;
       }
    }
+   put_str (s + 4);
 }
 
 void

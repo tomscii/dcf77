@@ -5,7 +5,7 @@
 #include <avr/io.h>
 #include <avr/power.h>
 
-#define USART_BAUD 1200UL
+#define USART_BAUD 2400UL
 
 FILE usart_str = FDEV_SETUP_STREAM (usart_putchar, usart_getchar,
                                     _FDEV_SETUP_RW);

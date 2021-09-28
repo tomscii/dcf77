@@ -12,10 +12,14 @@ Current draw @5V = ~0.2 mA
 
 Additionally, apply a clock prescaler of /8 for 250kHz MCU clock
 Current draw @5V = ~0.1 mA
+Current draw @3V = ~0.050 mA  <-- THIS!
+We need this clock speed to interface with DHT22 sensor.
+This current draw, when supplied by a 2700 mAh AA battery,
+yields ~50,000 hours (5.7 years) of runtime!
 
 Additionally, apply a clock prescaler of /16 for 125kHz MCU clock
 Current draw @5V = ~0.084 mA
-Current draw @3V = ~0.032 mA  <-- THIS!
+Current draw @3V = ~0.032 mA
 
 
 Configuration for 40kHz crystal

@@ -4,6 +4,7 @@
 extern const char* d2[];
 
 void put_str (const char* str);
+void put_byte_hex (uint8_t x);
 void put_uint (uint16_t x);
 void put_q4_11 (int16_t x);
 

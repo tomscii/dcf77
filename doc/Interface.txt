@@ -1,0 +1,277 @@
+# User interface
+
+Peripherals
+-----------
+
+The following UI elements are available:
+- LCD display
+- RGB LED backlight for the LCD
+- Pushbuttons
+- Piezo beeper
+
+The USART interface is also fully available simultaneously (no pin
+conflict or other MCU resource overlap). Useful for development,
+debugging, remote control, etc.
+
+
+The LCD display has 49 segments, as below:
+  _   _   _   _   _   _
+ |_| |_|:|_| |_|:|_| |_|
+ |_|.|_|.|_|.|_|.|_|.|_|
+
+There are 6 digits of 7 segments each, plus 2 colons between digit
+pairs, plus 5 decimal dots separating adjacent digits (but not after
+the last digit).
+
+We are able to control 48 bits independently, via three parallel
+16-bit shift registers fed by the MCU. The difference is reconciled by
+connecting the two colons into one common bit. We thus lose the
+ability to control them separately, but this seems like a reasonable
+compromise.
+
+          _   _   _
+  _|  _  |_    |   |
+ |_| |_  |     |   |
+
+
+
+Buttons
+-------
+
+There are three momentary pushbuttons on top of the unit.
+They are labeled, from left to right: MODE, SET, ADJ.
+
+MODE (button 1): cycle through display screens. When first pressed,
+only the backlight is activated and the unit does not jump to the next
+screen (this is for taking a reading of the clock in a dark room).
+Subsequent presses while the backlight is lit will cycle the screens.
+
+The backlight will dim after 5 seconds of inactivity and turn off
+after a further 5 seconds. The backlight can be locked permanently on
+by holding MODE down for 2 seconds. After 2 seconds of holding MODE, a
+short beep will be heard, and the backlight will stay on indefinitely
+until MODE is held down for 2 seconds again.
+
+SET (button 2): initiate or advance the setting within a screen.
+Also activates backlight / resets the backlight turnoff countdown.
+
+ADJ (button 3): adjust the setting (value) currently chosen.
+Also activates backlight / resets the backlight turnoff countdown.
+
+Special usage of buttons:
+
+- When MODE and SET are simultaneously held for 2 seconds, backlight
+  strength adjustment mode is activated. The display will read
+  "LEd XX" (with XX being the brightness level) instead of whatever it
+  was displaying, and the buttons SET and ADJ can be used to increase
+  and decrease the strength of the backlight, respectively.  The
+  prevailing color is kept (as much as possible), only the luminance
+  is adjusted. Pressing MODE will commit the setting and return to the
+  original screen.
+
+- When MODE and ADJ are simultaneously held for 2 seconds, this
+  triggers immediate DCF77 reception mode. Normally, the unit will
+  periodically turn on the DCF77 receiver in an attempt to receive the
+  signal and adjust its time. Between these adjustments, the unit runs
+  on its internal clock (which is quite precise). This is done to
+  spare battery power. After a successful DCF77 time sync, the unit
+  begins a countdown until the next time sync is first attempted. When
+  immediate DCF77 reception is triggered, this countdown is shortcut.
+
+  Note: it is normally better to let the unit decide when it attempts
+  to receive the DCF77 signal. Letting longer periods pass between
+  time synchronisations will allow the unit to better measure the
+  error of its own crystal oscillator, which will be subsequently
+  compensated, increasing its precision.
+
+  However, there might be situations where this is useful, e.g., if
+  only a part of one's apartment offers DCF77 reception, and the clock
+  is normally kept elsewhere. Then it might be a good idea to put the
+  unit in the known-good spot for reception, press MODE+ADJ until the
+  DCF77 indicator dot appears, and leave the device there for 5-10
+  minutes (depending on reception quality).
+
+- A simultaneous press of SET and ADJ is reserved, available for
+  screens to use as a 'reset'. (Currently used by: stopwatch)
+
+
+Decimal dots
+------------
+
+On all screens, the first decimal digit flashes with 1 Hz if there is
+an alarm time set. This dot is labeled as 'ALARM' on the housing.
+
+In time display screens (time of day and alarm), decimal dot 2 is
+visible if DST (daylight saving time) is in effect (factored into the
+displayed time).
+
+Decimal dot 3 is used to signal an upcoming leap second. This signal
+is visible only on the time-of-day screen, and only during the hour
+leading up to the leap second.
+
+Decimal dot 4 is used in sensor display screens, to signal that the
+displayed value is the minimum or maximum of the measured range
+(captured since the last min/max reset).
+
+When DCF77 reception is active, the rightmost decimal dot will flash
+in sync with the signal (visible if DCF77 receiver is on, blinking off
+shortly for periods of 1/10 or 1/20 seconds if there is a signal).
+This dot might be labeled as 'DCF77' on the housing.
+
+  _   _   _   _   _   _
+ |_| |_|:|_| |_|:|_| |_|
+ |_|.|_|.|_|.|_|.|_|.|_|
+
+    |   |   |   |   |
+ ALARM DST LEAPMIN DCF77
+           SEC MAX
+
+
+Screens
+-------
+
+The screens have various predefined background colors, which help the
+user recognize the current screen they are looking at / interacting
+with. This helps distinguish similar-looking screens, such as
+time-of-day and stopwatch, for example.
+
+
+Screen 1: time-of-day.
+- time display in HH:MM:SS format
+- colons are constantly shown
+- ALARM, DST, LEAP SEC, DCF77 decimal dots might be shown
+- minutes and hours are displayed with a leading zero
+- if the hour is single digit, there is no leading zero
+  _       _   _       _
+  _|   |: _| |_|:|_| |_
+ |_    |  _|  _|   | |_|
+
+Holding down SET will enable setting the time manually (useful in
+areas without adequate DCF77 reception; also enables using the unit
+without an attached receiver). The hour will start flashing, which can
+now be adjusted with ADJ. The seconds counter will be set to zero.
+Having adjusted the hour with ADJ, pressing SET will commit the hour
+value and the minute will start flashing. Pressing SET again will set
+the minute, reset the seconds to zero, and switch to the date display
+screen with the year flashing. The user can proceed to set elements of
+the date in a similar fashion, after which the day-of-week display
+will be shown with the number flashing. Even this can be adjusted;
+after SET is pressed, the unit returns to the time-of-day screen.
+
+Note that the moment of pressing SET to commit the minute and turn the
+screen to the date display, the device will start counting the time
+from the set value. It is thus possible to manually sync to another
+clock with sub-second precision. One can also leave the time input
+mode by holding down SET after having committed the hour. This allows
+one to manually adjust the hour (e.g., for a DST change) without
+disturbing the minutes and seconds, letting them run uninterrupted.
+
+Normally, doing the above should not be necessary, as the unit will
+automatically start syncing to the received DCF77 time code after
+power-on, and should be in sync after 1-3 minutes (provided that the
+signal reception is good enough).
+
+
+Screen 2: date display in YY.mm.dd format
+- no colons are shown
+- decimal dots between the groups are shown
+  _       _   _   _   _
+  _|   | | | |_|  _| |_|
+ |_    |.|_|  _|.|_  |_|
+
+Note: manual setting is only available via the time-of-day screen.
+
+Screen 3: day-of-week display (d.1 = Monday, d.7 = Sunday)
+              _
+          _|   |
+         |_|.  |
+
+Note: manual setting is only available via the time-of-day screen.
+
+Screen 4: temperature sensor display
+- there is a periodic background measurement to maintain the min/max
+  range, e.g., one measurement per 5 minutes.
+- if left in this mode, more frequent measurements will be made
+  (e.g., once every 10 seconds)
+- SET short press: toggle between realtime and min/max mode.
+  When in min/max mode, alternate every 2 seconds between showing the
+  minimum and the maximum values, and show decimal dot 4 'MIN/MAX'.
+- SET long press: reset min/max, switch back to realtime mode.
+              _   _   _
+  _    | |_|  _| |_| |
+       |   |.|_      |_
+
+Screen 5: relative humidity sensor display
+- note that the max. is 100, so the empty first digit might be
+  required to display a '1'.
+- operation: same as temperature screen, see above
+          _   _
+     |_|  _|   |  _  |_
+       |  _|.  | |   | |
+
+Screen 6: alarm clock display
+- if armed, display shows the time-of-day when the alarm triggers.
+  The leftmost dot flashes (just as it has in all other screens).
+  In this state, the alarm can be disarmed with a long press of SET.
+- if disarmed, display reads 'OFF', leftmost digit is constantly
+  visible to show that we are in the ALARM screen, but not flashing.
+  Long-pressing SET will load the last set alarm time onto the display
+  with the hour flashing. Adjust the hour with ADJ, and step to minute
+  with SET.
+- after having set the minute, SET will arm the alarm. The flashing
+  will stop, instead the leftmost decimal dot 'ALARM' will start
+  flashing.
+- The seconds are skipped and are always 00, displayed for consistency
+  (remember, either we show both colons, or none of them).
+- if MODE is pressed to move away from the alarm screen before
+  the alarm is armed, the changes are lost.
+- If ADJ is held down for 1 second, value starts rolling quickly
+  (and stops blinking so the user can follow its progress).
+          _   _   _
+         | | |_  |_
+    .    |_| |   |
+
+      _   _   _   _   _
+       |: _| | |:| | | |
+    .  |  _| |_| |_| |_|
+
+  When the alarm is armed and the set time is reached, the clock will
+  switch to time-of-day screen, and start beeping and flashing its RGB
+  backlight in various colors until any of the buttons are pressed.
+
+Screen 7: stopwatch
+- same as time display, but counts minutes, seconds and 1/100-seconds
+- start/resume and stop with ADJ
+- reset with SET, also while the timer is running
+- while the stopwatch is stopped (not counting), the whole display
+  (all numbers and the two colons) flashes
+- long press of SET starts a time entry mode (minutes and seconds),
+  where only the part being adjusted flashes.
+  When done (SET pressed twice to commit minutes and seconds) the
+  stopwatch will switch over to countdown mode from the set time.
+- in countdown mode, resetting with SET will reset to the set time;
+  reaching the bottom (zero) will stop counting and sound a beep.
+  In this countdown-complete state, pressing ADJ to start again will
+  automatically reload the set time and launch a new countdown.
+- long pressing SET and ADJ simultaneously will reset the stopwatch,
+  setting it back to count-forward mode and zeroing the time.
+- moving away from the stopwatch screen will not interrupt its
+  operations; if a countdown finishes while displaying another screen,
+  the clock will switch to the stopwatch and beep.
+      _   _   _   _   _
+     | |:| | | |:| | | |
+     |_| |_| |_| |_| |_|
+
+Screen 8: dice simulator: display a random 'double dice throw'
+- new throw on SET
+- also change background color randomly on each throw
+          _   _   _   _
+  _|   | |   |_  |_  |_
+ |_|   | |_  |_  |_| |_|
+
+
+TODO:
+
+Would be nice to have an extra mode where screens 1-5 are cycled
+through automatically (e.g., change every 6 seconds, so a complete
+cycle takes 30 seconds).

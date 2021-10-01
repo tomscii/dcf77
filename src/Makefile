@@ -1,4 +1,4 @@
-PRG            = dcf77
+PRG            = firmware
 SRC            = $(wildcard *.c)
 HDR            = $(wildcard *.h)
 OBJ            = $(SRC:%.c=%.o)

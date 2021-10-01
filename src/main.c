@@ -1,5 +1,6 @@
 #include "common.h"
 #include "clock.h"
+#include "dcf77.h"
 #include "dht22.h"
 #include "lcd.h"
 #include "pwm.h"
@@ -47,10 +48,11 @@ ioinit (void)
    power_all_disable ();
 
    clock_setup ();
-   usart_setup ();
+   dcf77_setup ();
+   dht22_setup ();
    lcd_setup ();
    pwm_setup ();
-   dht22_setup ();
+   usart_setup ();
 
    DEBUG_LED_ENABLE_OUTPUT;
 
@@ -101,6 +103,14 @@ process_input ()
       break;
    case 'W': // DHT22 power off
       dht22_power_set (0);
+      input_count = 0;
+      break;
+   case 'v': // DCF77 power on
+      dcf77_power_set (1);
+      input_count = 0;
+      break;
+   case 'V': // DCF77 power off
+      dcf77_power_set (0);
       input_count = 0;
       break;
    case 'r': // nudge red channel up
@@ -163,6 +173,15 @@ main_loop ()
          put_str (d2 [clock.seconds]);
          put_str ("\r\n");
       }
+   }
+
+   if (dcf77_flags.trigger)
+   {
+      dcf77_flags.trigger = 0;
+
+      putchar (dcf77_flags.next_edge ? 'v' : '^'); // prev edge was the opposite
+      put_uint (dcf77_flags.counter);
+      putchar (' ');
    }
 
    if (usart_flags.rx)

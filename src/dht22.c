@@ -19,16 +19,16 @@ uint8_t port_raw [N_RAW_READS];
 
 void dht22_setup ()
 {
-   DHT22_POWER_PORT |= _BV (DHT22_POWER);
+   DHT22_POWER_DDR |= _BV (DHT22_POWER);
    dht22_power_set (1);
 }
 
 void dht22_power_set (char on)
 {
    if (on)
-      DHT22_POWER_DDR |= _BV (DHT22_POWER);
+      DHT22_POWER_PORT |= _BV (DHT22_POWER);
    else
-      DHT22_POWER_DDR &= ~_BV (DHT22_POWER);
+      DHT22_POWER_PORT &= ~_BV (DHT22_POWER);
 }
 
 /* Given that a single port read + store takes 3 clocks (12 us) and

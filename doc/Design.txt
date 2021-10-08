@@ -95,11 +95,11 @@ https://www.electrokit.com/produkt/apparatlada-pc002-med-haltagning-gra/ (85x50x
 13 - PD7 - DCF77 POWER
 14 - PB0 - ICP1 - DCF77 S-
 
-15 - PB1
-16 - PB2 - BUTTON0
+15 - PB1 - BUTTON2
+16 - PB2 - BUTTON1
 17 - PB3 - OC2A - PWM - LED B + MOSI (AVRPROG)
-18 - PB4 - BUTTON1 + MISO (AVRPROG)
-19 - PB5 - BUTTON2 + SCK (AVRPROG)
+18 - PB4 - BUTTON0 + MISO (AVRPROG)
+19 - PB5 - SCK (AVRPROG)
 20 - AVCC (POWER)
 21 - AREF (POWER)
 22 - GND (POWER)

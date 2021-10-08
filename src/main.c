@@ -16,11 +16,11 @@
 
 #include <util/delay.h>
 
-uint16_t lcd_data [] = { 0, 0, 0 };
-
 #define INPUT_BUFSIZE 16
 char input [INPUT_BUFSIZE];
 uint8_t input_count;
+
+char echo = 1;
 
 void
 ioinit (void)
@@ -54,8 +54,6 @@ ioinit (void)
    pwm_setup ();
    usart_setup ();
 
-   DEBUG_LED_ENABLE_OUTPUT;
-
    sei ();
 }
 
@@ -81,6 +79,14 @@ process_input ()
          uint8_t seconds = 10 * (input [4] - '0') + input [5] - '0';
          clock_set (hours, minutes, seconds);
       }
+      input_count = 0;
+      break;
+   case 'e': // echo on
+      echo = 1;
+      input_count = 0;
+      break;
+   case 'E': // echo off
+      echo = 0;
       input_count = 0;
       break;
    case 't': // nudge time forward
@@ -163,15 +169,29 @@ main_loop ()
       {
          clock_flags.ovf_jiffies = 0;
 
-         lcd_data [0] = (clock.minutes << 8) + clock.seconds;
-         lcd_set_bits (lcd_data);
+         lcd_set_digit (1, '0' + (clock.hours / 10));
+         lcd_set_digit (2, '0' + (clock.hours % 10));
+         lcd_set_digit (3, '0' + (clock.minutes / 10));
+         lcd_set_digit (4, '0' + (clock.minutes % 10));
+         lcd_set_digit (5, '0' + (clock.seconds / 10));
+         lcd_set_digit (6, '0' + (clock.seconds % 10));
+         lcd_set_dot (1, 0);
+         lcd_set_dot (2, 0);
+         lcd_set_dot (3, 0);
+         lcd_set_dot (4, 0);
+         lcd_set_dot (5, 0);
+         lcd_set_colons (1);
+         lcd_commit ();
 
-         put_str (d2 [clock.hours]);
-         put_str (":");
-         put_str (d2 [clock.minutes]);
-         put_str (":");
-         put_str (d2 [clock.seconds]);
-         put_str ("\r\n");
+         if (echo)
+         {
+            put_str (d2 [clock.hours]);
+            put_str (":");
+            put_str (d2 [clock.minutes]);
+            put_str (":");
+            put_str (d2 [clock.seconds]);
+            put_str ("\r\n");
+         }
       }
    }
 

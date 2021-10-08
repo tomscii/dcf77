@@ -5,7 +5,14 @@
 
 void lcd_setup ();
 
-// Pass in an array of 3 elements for a total of 48 bits.
-void lcd_set_bits (uint16_t* data);
-
+// call this periodically to refresh LCD
 void lcd_send_frame ();
+
+// idx: 1..6 from left to right
+void lcd_set_digit (uint8_t idx, char c);
+// idx: 1..5 from left to right
+void lcd_set_dot (uint8_t idx, char on);
+void lcd_set_colons (char on);
+
+// apply changes from lcd_set_* to display buffer
+void lcd_commit ();

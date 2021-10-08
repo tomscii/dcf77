@@ -40,7 +40,6 @@ ISR (USART_UDRE_vect)
    else
    {
       UCSR0B &= ~_BV (UDRIE0);
-      DEBUG_LED_TOGGLE;
    }
 }
 

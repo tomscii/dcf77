@@ -273,6 +273,23 @@ void lcd_set_colons (char on)
    lcd_bits.s1.seg_col = on & 1;
 }
 
+void
+lcd_set_dot5_immediate (char c)
+{
+   lcd_bits.s1.seg_5dp = c & 1;
+
+   if (c)
+   {
+      lcd_data_pos [12] |= 0x2;
+      lcd_data_neg [12] &= ~0x2;
+   }
+   else
+   {
+      lcd_data_pos [12] &= ~0x2;
+      lcd_data_neg [12] |= 0x2;
+   }
+}
+
 // Runtime: 74 MCU clocks
 void
 lcd_send_frame ()

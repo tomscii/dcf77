@@ -73,7 +73,15 @@ ISR (TIMER1_OVF_vect)
    else
       OCR1A = TICK_DIV;
 
-   if (clock_flags.skip_jiffy)
+   if (clock.phase_vernier)
+   {
+      OCR1A -= clock.phase_vernier;
+      clock.phase_vernier = 0;
+   }
+
+   if (clock.phase_jiffy)
+      -- clock.phase_jiffy;
+   else if (clock_flags.skip_jiffy)
       clock_flags.skip_jiffy = 0;
    else
    {
@@ -120,13 +128,30 @@ clock_setup ()
 }
 
 void
-clock_set (uint8_t hours, uint8_t minutes, uint8_t seconds)
+clock_set_hm (uint8_t hours, uint8_t minutes)
+{
+   clock.hours = hours;
+   clock.minutes = minutes;
+   clock.seconds = 0;
+}
+
+void
+clock_set_hms (uint8_t hours, uint8_t minutes, uint8_t seconds)
 {
    clock.hours = hours;
    clock.minutes = minutes;
    clock.seconds = seconds;
    clock.jiffies = 0;
    TCNT1 = 0;
+}
+
+void
+clock_set_phase (uint8_t jiffy, int16_t vernier)
+{
+   cli ();
+   clock.phase_jiffy = jiffy;
+   clock.phase_vernier = vernier;
+   sei ();
 }
 
 void

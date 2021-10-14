@@ -20,7 +20,7 @@
 char input [INPUT_BUFSIZE];
 uint8_t input_count;
 
-char echo = 1;
+char echo = 0;
 
 void
 ioinit (void)
@@ -70,14 +70,14 @@ process_input ()
       {
          uint8_t hours = 10 * (input [0] - '0') + input [1] - '0';
          uint8_t minutes = 10 * (input [2] - '0') + input [3] - '0';
-         clock_set (hours, minutes, 0);
+         clock_set_hms (hours, minutes, 0);
       }
       else if (input_count == 7)  // HHMMSSs
       {
          uint8_t hours = 10 * (input [0] - '0') + input [1] - '0';
          uint8_t minutes = 10 * (input [2] - '0') + input [3] - '0';
          uint8_t seconds = 10 * (input [4] - '0') + input [5] - '0';
-         clock_set (hours, minutes, seconds);
+         clock_set_hms (hours, minutes, seconds);
       }
       input_count = 0;
       break;
@@ -95,6 +95,14 @@ process_input ()
       break;
    case 'T': // nudge time backward
       clock_minus_jiffy ();
+      input_count = 0;
+      break;
+   case 'n': // nudge time forward (1/10 jiffy)
+      clock_set_phase (0, 500);
+      input_count = 0;
+      break;
+   case 'N': // nudge time backward (1/10 jiffy)
+      clock_set_phase (0, -500);
       input_count = 0;
       break;
    case 'm': // measure humidity + temperature sensor
@@ -163,11 +171,13 @@ main_loop ()
    {
       clock_flags.tick = 0;
 
-      lcd_send_frame ();
+      dcf77_on_tick ();
 
       if (clock_flags.ovf_jiffies)
       {
          clock_flags.ovf_jiffies = 0;
+
+         dcf77_on_second ();
 
          lcd_set_digit (1, '0' + (clock.hours / 10));
          lcd_set_digit (2, '0' + (clock.hours % 10));
@@ -179,7 +189,6 @@ main_loop ()
          lcd_set_dot (2, 0);
          lcd_set_dot (3, 0);
          lcd_set_dot (4, 0);
-         lcd_set_dot (5, 0);
          lcd_set_colons (1);
          lcd_commit ();
 
@@ -193,15 +202,8 @@ main_loop ()
             put_str ("\r\n");
          }
       }
-   }
 
-   if (dcf77_flags.trigger)
-   {
-      dcf77_flags.trigger = 0;
-
-      putchar (dcf77_flags.next_edge ? 'v' : '^'); // prev edge was the opposite
-      put_uint (dcf77_flags.counter);
-      putchar (' ');
+      lcd_send_frame ();
    }
 
    if (usart_flags.rx)
@@ -229,7 +231,8 @@ main ()
    ioinit ();
 
    put_str ("\r\n\r\nDCF77 booted\r\n");
-   clock_adjust (3.8301 * 2048);
+   //clock_adjust (3.8301 * 2048);
+   clock_adjust (0);
 
    for (;;)
    {

@@ -20,7 +20,7 @@ uint8_t port_raw [N_RAW_READS];
 void dht22_setup ()
 {
    DHT22_POWER_DDR |= _BV (DHT22_POWER);
-   dht22_power_set (1);
+   dht22_power_set (0);
 }
 
 void dht22_power_set (char on)

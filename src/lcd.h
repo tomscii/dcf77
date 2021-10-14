@@ -14,5 +14,8 @@ void lcd_set_digit (uint8_t idx, char c);
 void lcd_set_dot (uint8_t idx, char on);
 void lcd_set_colons (char on);
 
+// immediate: does not require lcd_commit
+void lcd_set_dot5_immediate (char c);
+
 // apply changes from lcd_set_* to display buffer
 void lcd_commit ();

@@ -78,7 +78,14 @@ esrec: $(PRG)_eeprom.srec
 PRGSPEED       = -B 60kHz
 
 # This is mainly concerned with setting up the correct clock configuration.
-FUSEOPTS       = -Ulfuse:w:0xda:m
+LFUSE          = -Ulfuse:w:0xda:m
+
+# We reset the EESAVE bit to preserve EEPROM content on re-programming:
+HFUSE          = -Uhfuse:w:0xd1:m
+# Default HFUSE (uncomment this & program to blank EEPROM on *next* programming):
+#HFUSE          = -Uhfuse:w:0xd9:m
+
+FUSEOPTS       = $(LFUSE) $(HFUSE)
 
 dude: $(PRG).hex
 	avrdude -c usbtiny -p $(MCU_TARGET) $(PRGSPEED) $(FUSEOPTS) -U flash:w:$<

@@ -47,12 +47,12 @@ ioinit (void)
 
    power_all_disable ();
 
+   usart_setup (); // this is first to allow printouts in later setup functions
    clock_setup ();
    dcf77_setup ();
    dht22_setup ();
    lcd_setup ();
    pwm_setup ();
-   usart_setup ();
 
    sei ();
 }
@@ -81,6 +81,18 @@ process_input ()
       }
       input_count = 0;
       break;
+   case 'a': // clock adjust (test)
+      clock_adjust (1000);
+      input_count = 0;
+      break;
+   case 'A': // clock adjust (test)
+      clock_adjust (-200);
+      input_count = 0;
+      break;
+   case 'Z': // zero out clock adjustment
+      clock_adjust_reset ();
+      input_count = 0;
+      break;
    case 'e': // echo on
       echo = 1;
       input_count = 0;
@@ -95,14 +107,6 @@ process_input ()
       break;
    case 'T': // nudge time backward
       clock_minus_jiffy ();
-      input_count = 0;
-      break;
-   case 'n': // nudge time forward (1/10 jiffy)
-      clock_set_phase (0, 500);
-      input_count = 0;
-      break;
-   case 'N': // nudge time backward (1/10 jiffy)
-      clock_set_phase (0, -500);
       input_count = 0;
       break;
    case 'm': // measure humidity + temperature sensor
@@ -230,9 +234,7 @@ main ()
 {
    ioinit ();
 
-   put_str ("\r\n\r\nDCF77 booted\r\n");
-   //clock_adjust (3.8301 * 2048);
-   clock_adjust (0);
+   put_str ("DCF77 booted\r\n");
 
    for (;;)
    {

@@ -4,11 +4,11 @@
 
 #include <stdint.h>
 
+#include <avr/eeprom.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include <avr/power.h>
 
-#define F_TICK 50
 #define TICK_CYCLES (F_CPU/F_TICK)
 #define TICK_DIV (TICK_CYCLES - 1)
 #define CLKCOMP_TICKS (1000000/TICK_CYCLES)
@@ -55,6 +55,8 @@ struct
    uint16_t frac_rev;   // fractional's b10 -> LSB, etc.
 } clock_adj;
 
+uint16_t ee_clock_adj_ppm EEMEM = 0;
+
 ISR (TIMER1_OVF_vect)
 {
    if (++clkcomp_tick_count == CLKCOMP_TICKS)
@@ -73,21 +75,8 @@ ISR (TIMER1_OVF_vect)
    else
       OCR1A = TICK_DIV;
 
-   if (clock.phase_vernier)
-   {
-      OCR1A -= clock.phase_vernier;
-      clock.phase_vernier = 0;
-   }
-
-   if (clock.phase_jiffy)
-      -- clock.phase_jiffy;
-   else if (clock_flags.skip_jiffy)
-      clock_flags.skip_jiffy = 0;
-   else
-   {
-      clock_plus_jiffy ();
-      clock_flags.tick = 1;
-   }
+   clock_plus_jiffy ();
+   clock_flags.tick = 1;
 }
 
 void
@@ -112,7 +101,7 @@ clock_plus_jiffy ()
 
 void clock_minus_jiffy ()
 {
-   clock_flags.skip_jiffy = 1;
+   clock_drift_phase (1);
 }
 
 void
@@ -125,32 +114,41 @@ clock_setup ()
    TCCR1B = _BV (WGM13) | _BV (WGM12) | _BV (CS10);
    OCR1A = TICK_DIV;
    TIMSK1 = _BV (TOIE1);
+
+   uint16_t clock_adj_ppm;
+   if ((clock_adj_ppm = eeprom_read_word (&ee_clock_adj_ppm)) != 0xffff)
+      clock_adjust ((int16_t) clock_adj_ppm);
 }
 
 void
 clock_set_hm (uint8_t hours, uint8_t minutes)
 {
+   cli ();
    clock.hours = hours;
    clock.minutes = minutes;
    clock.seconds = 0;
+   sei ();
 }
 
 void
 clock_set_hms (uint8_t hours, uint8_t minutes, uint8_t seconds)
 {
+   cli ();
    clock.hours = hours;
    clock.minutes = minutes;
    clock.seconds = seconds;
    clock.jiffies = 0;
    TCNT1 = 0;
+   sei ();
 }
 
 void
-clock_set_phase (uint8_t jiffy, int16_t vernier)
+clock_drift_phase (uint8_t jiffies)
 {
    cli ();
-   clock.phase_jiffy = jiffy;
-   clock.phase_vernier = vernier;
+   clock.jiffies += F_TICK - jiffies;
+   while (clock.jiffies >= F_TICK)
+      clock.jiffies -= F_TICK;
    sei ();
 }
 
@@ -170,4 +168,13 @@ clock_adjust (int16_t ppm)
    clock_adj.integer >>= 11;
    // preprocess so the clockadj cycle has less work to do:
    clock_adj.frac_rev = revbits (clock_adj.fractional << 5);
+
+   eeprom_write_word (&ee_clock_adj_ppm, (uint16_t) clock_adj.ppm);
+}
+
+void
+clock_adjust_reset ()
+{
+   clock_adj.ppm = 0;
+   clock_adjust (0);
 }

@@ -25,8 +25,13 @@ enum dcf77_state_t
 enum dcf77_state_t state = POWEROFF;
 uint16_t state_seconds = 0; // seconds since state transition
 
-uint8_t acc_signal [F_TICK]; // cumulative no. of active level observations
-uint8_t bit_samples [10]; // no need to sample all the way through
+uint8_t phase_acc [F_TICK]; // cumulative no. of active level observations
+
+// The '1' bit is 10 samples long. We start sampling slightly early
+// (by about 1-2 jiffies) due to the way the phase detector syncs,
+// and leave a similar amount of slack at the end.
+#define N_BIT_SAMPLES 15
+uint8_t bit_samples [N_BIT_SAMPLES];
 
 uint8_t recv_bit_cnt = 0;
 int8_t recv_bits [60];
@@ -84,20 +89,27 @@ void dcf77_on_tick ()
    case PHASE_ACQ:
       // we use the inverted signal
       if (! dcf77_flags.curr_level)
-         ++ acc_signal [clock.jiffies];
-
+      {
+         uint8_t j, k;
+         for (j = 0, k = clock.jiffies; j < 5; ++j)
+         {
+            ++ phase_acc [k];
+            if (++k == F_TICK)
+               k = 0;
+         }
+      }
       break;
 
    case FRAME_ACQ:
-      if (clock.jiffies < 10)
+      if (clock.jiffies < N_BIT_SAMPLES)
       {
          // we use the inverted signal
          bit_samples [clock.jiffies] = ! dcf77_flags.curr_level;
       }
-      else if (clock.jiffies == 10)
+      else if (clock.jiffies == N_BIT_SAMPLES)
       {
          uint8_t k, sum = 0;
-         for (k = 0; k < 10; ++k)
+         for (k = 0; k < N_BIT_SAMPLES; ++k)
             sum += bit_samples [k];
 
          if (++ recv_bit_cnt == 60)
@@ -230,65 +242,66 @@ void dcf77_on_second ()
 
          uint8_t j;
          for (j = 0; j < F_TICK; ++j)
-            acc_signal [j] = 0;
+            phase_acc [j] = 0;
       }
       break;
 
    case PHASE_ACQ:
       if ((++state_seconds % 8) == 0)
       {
-         uint8_t j, k;
-         uint16_t rs [F_TICK]; // rolling sums
-         uint8_t max_j = 0;    // index (jiffy) of rolling sum peak
-         uint8_t max_rs = 0;   // rolling sum peak value
-         uint8_t max_rs_2 = 0; // rolling sum 2nd largest peak value
+         uint8_t j;
+         uint8_t max_j = 0;    // index (jiffy) of phase_acc sum peak
+         uint8_t max_pa = 0;   // phase_acc peak value
+         uint8_t max_pa_2 = 0; // phase_acc 2nd largest peak value
          for (j = 0; j < F_TICK; ++j)
          {
-            rs [j] = 0;
-            for (k = j; k < j + 5; ++k)
-               rs [j] += acc_signal [k % F_TICK];
-            rs [j] /= state_seconds >> 1; // no need to be exact
-         }
-         for (j = 0; j < F_TICK; ++j)
-         {
-            if (rs [j] > max_rs)
+            if (phase_acc [j] > max_pa)
             {
                max_j = j;
-               max_rs = rs [j];
+               max_pa = phase_acc [j];
             }
-            if (rs [j] > 0)
-               putchar ('A' + rs [j] - 1);
+            if (phase_acc [j] > 0)
+               putchar ('A' + phase_acc [j] - 1);
             else
                putchar ('_');
          }
          put_str ("\r\n");
          for (j = 0; j < F_TICK; ++j)
          {
-            if (j != max_j && j != max_j + 1 && rs [j] > max_rs_2)
-               max_rs_2 = rs [j];
+            if (j != max_j && j != max_j + 1 && phase_acc [j] > max_pa_2)
+               max_pa_2 = phase_acc [j];
          }
 
          // The condition of successful detection is a reasonably high
          // singular peak one or two jiffies long; all other readings
          // must be lower.
-         if (max_rs > 6 && max_rs > max_rs_2)
+         uint8_t thresh = 4 * state_seconds;
+         if (max_pa > thresh && max_pa > max_pa_2)
          {
-            state = FRAME_ACQ;
-            state_seconds = 0;
-            recv_bit_cnt = 0;
+            // Offset the detected phase so we sync to jiffy 5 instead of
+            // jiffy 0. By doing a rolling sum of length 5 instead of a
+            // proper convolution on the estimated signal, we slightly
+            // overshoot max_j (by about 4 jiffies), plus leave some slack
+            // for the LCD update (another jiffy) so visible seconds ticks
+            // will be in perfect sync with a reference clock.
+            max_j += F_TICK - 5;
+            while (max_j >= F_TICK)
+               max_j -= F_TICK;
+
+            put_str ("drift=");
+            put_uint (max_j);
+            put_str ("\r\n");
 
             clock_drift_phase (max_j);
             acc_drift_phase += max_j;
 
-            uint8_t tmp [F_TICK];
-            for (j = 0; j < F_TICK; ++j)
-               tmp [j] = acc_signal [(max_j + j) % F_TICK];
-            for (j = 0; j < F_TICK; ++j)
-               acc_signal [j] = tmp [j];
+            state = FRAME_ACQ;
+            state_seconds = 0;
+            recv_bit_cnt = 0;
 
             put_str (" -> FRAME_ACQ\r\n");
          }
-         else if (state_seconds == 64)
+         else if (state_seconds == 48) // more than this would overflow phase_acc
          {
             // give up, try again later
             dcf77_power_set (0);
@@ -323,6 +336,14 @@ void dcf77_on_second ()
          dt = F_TICK * dt + acc_drift_phase;
 
          ppm_adj = -2048 * 1000000 / seconds_since_last_sync * dt / F_TICK;
+
+         put_str ("adp=");
+         put_uint (acc_drift_phase);
+         put_str (" dt=");
+         put_int (dt);
+         put_str (" ppm_adj=");
+         put_q4_11 (ppm_adj);
+         put_str ("\r\n");
       }
 
       clock_set_hm (dcf77_clock.hours, dcf77_clock.minutes);

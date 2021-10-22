@@ -28,6 +28,17 @@ void put_byte_hex (uint8_t x)
    putchar (d [x & 0x0f]);
 }
 
+void put_int (int16_t x)
+{
+   if (x < 0)
+   {
+      putchar ('-');
+      put_uint (-x);
+   }
+   else
+      put_uint (x);
+}
+
 void put_uint (uint16_t x)
 {
    char s [6] = { '0', '0', '0', '0', '0', 0 };

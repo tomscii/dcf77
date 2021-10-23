@@ -56,9 +56,19 @@ void dcf77_setup ()
 void dcf77_power_set (char on)
 {
    if (on)
+   {
       DCF77_POWER_PORT |= _BV (DCF77_POWER);
+      // switch DATA pin to input with pull-up:
+      DCF77_DATA_DDR &= ~_BV (DCF77_DATA);
+      DCF77_DATA_PORT |= _BV (DCF77_DATA);
+   }
    else
+   {
       DCF77_POWER_PORT &= ~_BV (DCF77_POWER);
+      // drive DATA low to avoid bleeding current through pull-up:
+      DCF77_DATA_DDR |= _BV (DCF77_DATA);
+      DCF77_DATA_PORT &= ~_BV (DCF77_DATA);
+   }
 
    lcd_set_dot5_immediate (on);
 }

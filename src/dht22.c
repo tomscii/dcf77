@@ -26,9 +26,19 @@ void dht22_setup ()
 void dht22_power_set (char on)
 {
    if (on)
+   {
       DHT22_POWER_PORT |= _BV (DHT22_POWER);
+      // switch DATA pin to input with pull-up:
+      DHT22_DATA_DDR &= ~_BV (DHT22_DATA);
+      DHT22_DATA_PORT |= _BV (DHT22_DATA);
+   }
    else
+   {
       DHT22_POWER_PORT &= ~_BV (DHT22_POWER);
+      // drive DATA low to avoid bleeding current through pull-up:
+      DHT22_DATA_DDR |= _BV (DHT22_DATA);
+      DHT22_DATA_PORT &= ~_BV (DHT22_DATA);
+   }
 }
 
 /* Given that a single port read + store takes 3 clocks (12 us) and

@@ -8,7 +8,7 @@
 
 struct clock_t
 {
-   uint8_t jiffies;
+   int8_t jiffies; // N.B.: signed so we can simply drift it backwards
    uint8_t seconds;
    uint8_t minutes;
    uint8_t hours;
@@ -32,10 +32,8 @@ void clock_tick ();
 void clock_set_hm (uint8_t hours, uint8_t minutes);
 void clock_set_hms (uint8_t hours, uint8_t minutes, uint8_t seconds);
 
-// Drift the clock phase by the given number of jiffies
-// (zero = no change to jiffy phase). This is done by letting
-// time pass for the given number of jiffies without counting.
-void clock_drift_phase (uint8_t jiffies);
+// Drift the clock phase backwards by the given number of jiffies
+void clock_drift_phase (int8_t jiffies);
 
 void clock_plus_jiffy ();
 void clock_minus_jiffy ();

@@ -143,12 +143,10 @@ clock_set_hms (uint8_t hours, uint8_t minutes, uint8_t seconds)
 }
 
 void
-clock_drift_phase (uint8_t jiffies)
+clock_drift_phase (int8_t jiffies)
 {
    cli ();
-   clock.jiffies += F_TICK - jiffies;
-   while (clock.jiffies >= F_TICK)
-      clock.jiffies -= F_TICK;
+   clock.jiffies -= jiffies;
    sei ();
 }
 

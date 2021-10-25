@@ -40,9 +40,9 @@ int8_t recv_bits [60];
 struct clock_t dcf77_clock;
 
 uint8_t has_been_synced = 0;
-uint32_t seconds_since_last_sync;
+int32_t seconds_since_last_sync; // N.B.: signed for the sake of computation
 uint8_t acc_drift_phase = 0;
-uint32_t sync_ttl = 3600; // seconds before a new sync will be attempted
+int32_t sync_ttl = 3600; // seconds before a new sync will be attempted
 
 void dcf77_setup ()
 {
@@ -111,7 +111,7 @@ void dcf77_on_tick ()
       break;
 
    case FRAME_ACQ:
-      if (clock.jiffies < N_BIT_SAMPLES)
+      if (0 <= clock.jiffies && clock.jiffies < N_BIT_SAMPLES)
       {
          // we use the inverted signal
          bit_samples [clock.jiffies] = ! dcf77_flags.curr_level;
@@ -341,11 +341,14 @@ void dcf77_on_second ()
       if (has_been_synced)
       {
          int16_t dt = // numeric range covers for >~10 minutes of discrepancy
-            ((dcf77_clock.hours - clock.hours) * 60 +
-             (dcf77_clock.minutes - clock.minutes)) * 60 - clock.seconds;
+            ((clock.hours - dcf77_clock.hours) * 60 +
+             (clock.minutes - dcf77_clock.minutes)) * 60 +
+            clock.seconds; // dcf77_clock.seconds is zero
+         // convert from seconds to jiffies and add accumulated phase drift:
          dt = F_TICK * dt + acc_drift_phase;
 
-         ppm_adj = -2048 * 1000000 / seconds_since_last_sync * dt / F_TICK;
+         // Q4.11 range of ppm_adj === |dt| < 69 jiffies @ daily sync
+         ppm_adj = -2048 * 1000000L / seconds_since_last_sync * dt / F_TICK;
 
          put_str ("adp=");
          put_uint (acc_drift_phase);
@@ -364,7 +367,7 @@ void dcf77_on_second ()
       dcf77_power_set (0);
       state = POWEROFF;
       state_seconds = 0;
-      sync_ttl = 86400 - 120; // It takes ~2 mins to get a sync
+      sync_ttl = 86400L - 120; // It takes ~2 mins to get a sync
       put_str (" -> POWEROFF\r\n");
 
       if (ppm_adj)

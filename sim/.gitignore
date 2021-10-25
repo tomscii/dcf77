@@ -1,0 +1,7 @@
+*.avro
+*.axf
+*.elf
+*.hex
+*.o
+*.vcd
+simulator

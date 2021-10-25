@@ -1,0 +1,15 @@
+To get up and running, install simavr (command for debian bullseye):
+
+    sudo apt-get install simavr libsimavr2 libsimavrparts1 libsimavr-dev libsimavr-examples
+
+The simgui (running in a subprocess, spawned by simulator) requires tcl/tk.
+
+Type `make' in this directory to build the firmware (with simulation
+bits) and the simulator itself.
+
+Make sure picocom is installed. Run the simulation:
+    export SIMAVR_UART_XTERM=1
+    ./simulator
+
+Open the trace:
+    gtkwave trace.vcd

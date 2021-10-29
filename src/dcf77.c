@@ -16,8 +16,6 @@
 #define DCF77_DATA_PIN   PINB
 #define DCF77_DATA       PB0
 
-volatile struct dcf77_flags_t dcf77_flags;
-
 enum dcf77_state_t
 {
    POWEROFF, WARMUP, PHASE_ACQ, FRAME_ACQ, SYNCED
@@ -34,7 +32,10 @@ uint8_t phase_acc [F_TICK]; // cumulative no. of active level observations
 uint8_t bit_samples [N_BIT_SAMPLES];
 
 uint8_t recv_bit_cnt = 0;
-int8_t recv_bits [60];
+char recv_bits [60];
+// special values stored in recv_bits, all < 0:
+#define RECV_BIT_MINUTE_MARK    -1
+#define RECV_BIT_INVALID        -2
 
 // the time decoded from DCF77, to be loaded into/compared with local clock
 struct clock_t dcf77_clock;
@@ -73,11 +74,11 @@ void dcf77_power_set (char on)
    lcd_set_dot5_immediate (on);
 }
 
-void bcd_decode (int8_t* data, int count, uint8_t* parity, uint8_t* result)
+void bcd_decode (char* data, char count, char* parity, char* result)
 {
-   const uint8_t mul [] = {1, 2, 4, 8, 10, 20, 40, 80};
+   const char mul [] = {1, 2, 4, 8, 10, 20, 40, 80};
 
-   uint8_t k;
+   int8_t k;
    *result = 0;
    for (k = 0; k < count; ++k)
    {
@@ -91,14 +92,14 @@ void dcf77_on_tick ()
    if (state == POWEROFF)
       return;
 
-   dcf77_flags.curr_level = DCF77_DATA_PIN & _BV (PB0);
-   lcd_set_dot5_immediate (dcf77_flags.curr_level);
+   char dcf77_level = DCF77_DATA_PIN & _BV (PB0);
+   lcd_set_dot5_immediate (dcf77_level);
 
    switch (state)
    {
    case PHASE_ACQ:
       // we use the inverted signal
-      if (! dcf77_flags.curr_level)
+      if (! dcf77_level)
       {
          uint8_t j, k;
          for (j = 0, k = clock.jiffies; j < 5; ++j)
@@ -114,7 +115,7 @@ void dcf77_on_tick ()
       if (0 <= clock.jiffies && clock.jiffies < N_BIT_SAMPLES)
       {
          // we use the inverted signal
-         bit_samples [clock.jiffies] = ! dcf77_flags.curr_level;
+         bit_samples [(uint8_t)clock.jiffies] = ! dcf77_level;
       }
       else if (clock.jiffies == N_BIT_SAMPLES)
       {
@@ -131,12 +132,12 @@ void dcf77_on_tick ()
             recv_bits [recv_bit_cnt] = 0;
          else
          {
-            recv_bits [recv_bit_cnt] = -1;
+            recv_bits [recv_bit_cnt] = RECV_BIT_MINUTE_MARK;
 
             if (recv_bit_cnt != 59)
             {
                // rotate bits so this is bit 59
-               int8_t tmp [60];
+               char tmp [60];
                for (k = 0; k < 60; ++k)
                   tmp [k] = recv_bits [(k + recv_bit_cnt + 1) % 60];
                for (k = 0; k < 60; ++k)
@@ -152,18 +153,43 @@ void dcf77_on_tick ()
                {
                case 0: putchar ('0'); break;
                case 1: putchar ('1'); break;
-               case -1: putchar ('_'); break;
+               case RECV_BIT_MINUTE_MARK: putchar ('_'); break;
                default: putchar ('*'); break;
                }
             }
             put_str ("\r\n");
 
-            if (state_seconds >= 60)
+            if (state_seconds > 42)
             {
                // attempt to decode the time -- if it's valid, we're done!
+               for (k = 17; k < 59; ++k)
+               {
+                  if (recv_bits [k] < 0)
+                  {
+                     put_str ("illegal bit\r\n");
+                     return;
+                  }
+               }
 
-               uint8_t parity = 0;
-               uint8_t minutes = 0;
+               char dst = 0;
+               if (recv_bits [17] == 0 && recv_bits [18] == 1)
+                  dst = 0;
+               else if (recv_bits [17] == 1 && recv_bits [18] == 0)
+                  dst = 1;
+               else
+               {
+                  put_str ("berr dst\r\n");
+                  return;
+               }
+
+               if (recv_bits [20] != 1)
+               {
+                  put_str ("berr min_start\r\n");
+                  return;
+               }
+
+               char parity = 0;
+               char minutes = 0;
                bcd_decode (recv_bits + 21, 7, &parity, &minutes);
                if ((parity + recv_bits [28]) & 1)
                {
@@ -172,7 +198,7 @@ void dcf77_on_tick ()
                }
 
                parity = 0;
-               uint8_t hours = 0;
+               char hours = 0;
                bcd_decode (recv_bits + 29, 6, &parity, &hours);
                if ((parity + recv_bits [35]) & 1)
                {
@@ -180,13 +206,19 @@ void dcf77_on_tick ()
                   return;
                }
 
+               if (hours > 23 || minutes > 59)
+               {
+                  put_str ("illegal h/m\r\n");
+                  return;
+               }
+
                parity = 0;
-               uint8_t day_of_month = 0;
-               uint8_t day_of_week = 0;
-               uint8_t month = 0;
-               uint8_t year = 0;
-               bcd_decode (recv_bits + 36, 6, &parity, &day_of_month);
-               bcd_decode (recv_bits + 42, 3, &parity, &day_of_week);
+               char day = 0;
+               char dow = 0;
+               char month = 0;
+               char year = 0;
+               bcd_decode (recv_bits + 36, 6, &parity, &day);
+               bcd_decode (recv_bits + 42, 3, &parity, &dow);
                bcd_decode (recv_bits + 45, 5, &parity, &month);
                bcd_decode (recv_bits + 50, 8, &parity, &year);
                if ((parity + recv_bits [58]) & 1)
@@ -195,24 +227,17 @@ void dcf77_on_tick ()
                   return;
                }
 
-               for (k = 0; k < 59; ++k)
-               {
-                  if (recv_bits [k] == -1)
-                  {
-                     put_str ("illegal bit\r\n");
-                     return;
-                  }
-               }
-               if (hours > 23 || minutes > 59)
-               {
-                  put_str ("illegal value\r\n");
-                  return;
-               }
+               dcf77_clock.dst = dst;
+               dcf77_clock.year = year;
+               dcf77_clock.month = month;
+               dcf77_clock.day = day;
+               dcf77_clock.dow = dow;
+               dcf77_clock.hours = hours;
+               dcf77_clock.minutes = minutes;
+               dcf77_clock.seconds = 0;
 
                state = SYNCED;
                state_seconds = 0;
-               dcf77_clock.hours = hours;
-               dcf77_clock.minutes = minutes;
                put_str (" -> SYNCED\r\n");
             }
          }
@@ -226,13 +251,13 @@ void dcf77_on_tick ()
 
 void dcf77_on_second ()
 {
-   if (has_been_synced)
-      ++ seconds_since_last_sync;
+   ++ seconds_since_last_sync;
 
    switch (state)
    {
    case POWEROFF:
-      if (sync_ttl == 0)
+      if ((clock.hours == 3 && clock.minutes == 0 && clock.seconds == 0) ||
+          sync_ttl == 0)
       {
          dcf77_power_set (1);
          state = WARMUP;
@@ -244,7 +269,7 @@ void dcf77_on_second ()
       break;
 
    case WARMUP:
-      if (++ state_seconds == 8)
+      if (++ state_seconds == 6)
       {
          state = PHASE_ACQ;
          state_seconds = 0;
@@ -307,7 +332,8 @@ void dcf77_on_second ()
 
             state = FRAME_ACQ;
             state_seconds = 0;
-            recv_bit_cnt = 0;
+            recv_bit_cnt = clock.seconds;
+            recv_bits [recv_bit_cnt] = RECV_BIT_INVALID;
 
             put_str (" -> FRAME_ACQ\r\n");
          }
@@ -340,26 +366,33 @@ void dcf77_on_second ()
       int32_t ppm_adj = 0;
       if (has_been_synced)
       {
-         int16_t dt = // numeric range covers for >~10 minutes of discrepancy
-            ((clock.hours - dcf77_clock.hours) * 60 +
-             (clock.minutes - dcf77_clock.minutes)) * 60 +
-            clock.seconds; // dcf77_clock.seconds is zero
-         // convert from seconds to jiffies and add accumulated phase drift:
-         dt = F_TICK * dt + acc_drift_phase;
+         if (clock.dst == dcf77_clock.dst)
+         {
+            int16_t dt = // numeric range covers for >~10 minutes of discrepancy
+               ((clock.hours - dcf77_clock.hours) * 60 +
+                (clock.minutes - dcf77_clock.minutes)) * 60 +
+               clock.seconds; // dcf77_clock.seconds is zero
+            // convert from seconds to jiffies and add accumulated phase drift:
+            dt = F_TICK * dt + acc_drift_phase;
 
-         // Q4.11 range of ppm_adj === |dt| < 69 jiffies @ daily sync
-         ppm_adj = -2048 * 1000000L / seconds_since_last_sync * dt / F_TICK;
+            // Q4.11 range of ppm_adj === |dt| < 69 jiffies @ daily sync
+            ppm_adj = -2048 * 1000000L / seconds_since_last_sync * dt / F_TICK;
 
-         put_str ("adp=");
-         put_uint (acc_drift_phase);
-         put_str (" dt=");
-         put_int (dt);
-         put_str (" ppm_adj=");
-         put_q4_11 (ppm_adj);
-         put_str ("\r\n");
+            put_str ("adp=");
+            put_uint (acc_drift_phase);
+            put_str (" dt=");
+            put_int (dt);
+            put_str (" ppm_adj=");
+            put_q4_11 (ppm_adj);
+            put_str ("\r\n");
+         }
+         else
+         {
+            put_str ("DST change\r\n");
+         }
       }
 
-      clock_set_hm (dcf77_clock.hours, dcf77_clock.minutes);
+      clock_set (&dcf77_clock);
       seconds_since_last_sync = 0;
       has_been_synced = 1;
       acc_drift_phase = 0;
@@ -367,7 +400,7 @@ void dcf77_on_second ()
       dcf77_power_set (0);
       state = POWEROFF;
       state_seconds = 0;
-      sync_ttl = 86400L - 120; // It takes ~2 mins to get a sync
+      sync_ttl = 86400L;
       put_str (" -> POWEROFF\r\n");
 
       if (ppm_adj)

@@ -49,7 +49,7 @@ uint16_t clkcomp_frac_count_prev = 0;
 struct
 {
    int16_t ppm;         // Q4.11: [siiiifff|ffffffff]
-   int8_t sign;         // 1: speedup, -1: slowdown
+   char sign;           // 1: speedup, -1: slowdown
    uint16_t integer;    // 4 bits, b3: 8 ppm ... b0: 1 ppm
    uint16_t fractional; // 11 bits, b10: 1/2 ppm ... b0: 1/2048 ppm
    uint16_t frac_rev;   // fractional's b10 -> LSB, etc.
@@ -121,17 +121,22 @@ clock_setup ()
 }
 
 void
-clock_set_hm (uint8_t hours, uint8_t minutes)
+clock_set (const struct clock_t* ref)
 {
    cli ();
-   clock.hours = hours;
-   clock.minutes = minutes;
-   clock.seconds = 0;
+   clock.dst = ref->dst;
+   clock.year = ref->year;
+   clock.month = ref->month;
+   clock.day = ref->day;
+   clock.dow = ref->dow;
+   clock.hours = ref->hours;
+   clock.minutes = ref->minutes;
+   clock.seconds = ref->seconds;
    sei ();
 }
 
 void
-clock_set_hms (uint8_t hours, uint8_t minutes, uint8_t seconds)
+clock_set_hms (char hours, char minutes, char seconds)
 {
    cli ();
    clock.hours = hours;
@@ -143,7 +148,7 @@ clock_set_hms (uint8_t hours, uint8_t minutes, uint8_t seconds)
 }
 
 void
-clock_drift_phase (int8_t jiffies)
+clock_drift_phase (char jiffies)
 {
    cli ();
    clock.jiffies -= jiffies;

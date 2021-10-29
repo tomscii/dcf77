@@ -183,14 +183,17 @@ main_loop ()
 
          dcf77_on_second ();
 
-         lcd_set_digit (1, '0' + (clock.hours / 10));
+         if (clock.hours < 10)
+            lcd_set_digit (1, ' ');
+         else
+            lcd_set_digit (1, '0' + (clock.hours / 10));
          lcd_set_digit (2, '0' + (clock.hours % 10));
          lcd_set_digit (3, '0' + (clock.minutes / 10));
          lcd_set_digit (4, '0' + (clock.minutes % 10));
          lcd_set_digit (5, '0' + (clock.seconds / 10));
          lcd_set_digit (6, '0' + (clock.seconds % 10));
          lcd_set_dot (1, 0);
-         lcd_set_dot (2, 0);
+         lcd_set_dot (2, clock.dst);
          lcd_set_dot (3, 0);
          lcd_set_dot (4, 0);
          lcd_set_colons (1);
@@ -198,11 +201,11 @@ main_loop ()
 
          if (echo)
          {
-            put_str (d2 [clock.hours]);
+            put_str (d2 [(uint8_t)clock.hours]);
             put_str (":");
-            put_str (d2 [clock.minutes]);
+            put_str (d2 [(uint8_t)clock.minutes]);
             put_str (":");
-            put_str (d2 [clock.seconds]);
+            put_str (d2 [(uint8_t)clock.seconds]);
             put_str ("\r\n");
          }
       }

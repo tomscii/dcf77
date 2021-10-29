@@ -8,10 +8,16 @@
 
 struct clock_t
 {
-   int8_t jiffies; // N.B.: signed so we can simply drift it backwards
-   uint8_t seconds;
-   uint8_t minutes;
-   uint8_t hours;
+   char jiffies; // N.B.: signed so we can simply drift it backwards
+   char seconds;
+   char minutes;
+   char hours;
+
+   char day;
+   char month;
+   char year; // mod 100
+   char dow; // day of week, 1..7, 1=Monday
+   char dst;
 };
 extern struct clock_t clock;
 
@@ -29,11 +35,11 @@ void clock_adjust_reset ();
 
 void clock_tick ();
 
-void clock_set_hm (uint8_t hours, uint8_t minutes);
-void clock_set_hms (uint8_t hours, uint8_t minutes, uint8_t seconds);
+void clock_set (const struct clock_t* ref);
+void clock_set_hms (char hours, char minutes, char seconds);
 
 // Drift the clock phase backwards by the given number of jiffies
-void clock_drift_phase (int8_t jiffies);
+void clock_drift_phase (char jiffies);
 
 void clock_plus_jiffy ();
 void clock_minus_jiffy ();

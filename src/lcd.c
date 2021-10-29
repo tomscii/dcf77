@@ -162,12 +162,13 @@ lcd_commit ()
    }
 }
 
-// Return 7-segment bits as _gfedcba
+// Return 7-segment bits as 0gfedcba
 uint8_t
 decode_segments (char c)
 {
    switch (c)
    {
+   case ' ': return 0x00;
    case '0': return 0x3f;
    case '1': return 0x06;
    case '2': return 0x5b;

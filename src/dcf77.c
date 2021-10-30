@@ -71,7 +71,7 @@ void dcf77_power_set (char on)
       DCF77_DATA_PORT &= ~_BV (DCF77_DATA);
    }
 
-   lcd_set_dot5_immediate (on);
+   lcd_set_dot (5, on);
 }
 
 void bcd_decode (char* data, char count, char* parity, char* result)
@@ -93,7 +93,7 @@ void dcf77_on_tick ()
       return;
 
    char dcf77_level = DCF77_DATA_PIN & _BV (PB0);
-   lcd_set_dot5_immediate (dcf77_level);
+   lcd_set_dot (5, dcf77_level);
 
    switch (state)
    {

@@ -197,7 +197,6 @@ main_loop ()
          lcd_set_dot (3, 0);
          lcd_set_dot (4, 0);
          lcd_set_colons (1);
-         lcd_commit ();
 
          if (echo)
          {

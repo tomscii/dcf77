@@ -14,85 +14,7 @@
 #define LCD_COM  PC4
 #define LCD_OE_  PC5
 
-/* Connection layout of LCD display module */
-struct lcd_bits_t
-{
-   union
-   {
-      struct
-      {
-         uint8_t seg_4dp: 1;
-         uint8_t seg_4c: 1;
-         uint8_t seg_4d: 1;
-         uint8_t seg_4e: 1;
-         uint8_t seg_3dp: 1;
-         uint8_t seg_3c: 1;
-         uint8_t seg_3d: 1;
-         uint8_t seg_3e: 1;
-         uint8_t seg_2dp: 1;
-         uint8_t seg_2c: 1;
-         uint8_t seg_2d: 1;
-         uint8_t seg_2e: 1;
-         uint8_t seg_1dp: 1;
-         uint8_t seg_1c: 1;
-         uint8_t seg_1d: 1;
-         uint8_t seg_1e: 1;
-      } s0;
-      uint16_t raw_0;
-   };
-
-   union
-   {
-      struct
-      {
-         uint8_t seg_col: 1;
-         uint8_t seg_5g: 1;
-         uint8_t seg_5f: 1;
-         uint8_t seg_5a: 1;
-         uint8_t seg_5b: 1;
-         uint8_t seg_6g: 1;
-         uint8_t seg_6f: 1;
-         uint8_t seg_6a: 1;
-         uint8_t seg_6b: 1;
-         uint8_t seg_6c: 1;
-         uint8_t seg_6d: 1;
-         uint8_t seg_6e: 1;
-         uint8_t seg_5dp: 1;
-         uint8_t seg_5c: 1;
-         uint8_t seg_5d: 1;
-         uint8_t seg_5e: 1;
-      } s1;
-      uint16_t raw_1;
-   };
-
-   union
-   {
-      struct
-      {
-         uint8_t seg_1g: 1;
-         uint8_t seg_1f: 1;
-         uint8_t seg_1a: 1;
-         uint8_t seg_1b: 1;
-         uint8_t seg_2g: 1;
-         uint8_t seg_2f: 1;
-         uint8_t seg_2a: 1;
-         uint8_t seg_2b: 1;
-         uint8_t seg_3g: 1;
-         uint8_t seg_3f: 1;
-         uint8_t seg_3a: 1;
-         uint8_t seg_3b: 1;
-         uint8_t seg_4g: 1;
-         uint8_t seg_4f: 1;
-         uint8_t seg_4a: 1;
-         uint8_t seg_4b: 1;
-      } s2;
-      uint16_t raw_2;
-   };
-};
-struct lcd_bits_t lcd_bits;
-uint16_t* const lcd_data = (uint16_t *)&lcd_bits;
-
-/* Data tables for efficient bit-banging our LCD data
+/* Data table for efficient bit-banging our LCD data
  * into three parallel 16-bit shift registers, sampled
  * on the rising edge of LCD_CLK.
  *
@@ -104,21 +26,37 @@ uint16_t* const lcd_data = (uint16_t *)&lcd_bits;
  * The COM bit is initialized to 0, and enabled separately.
  * The CLK bit is initialized to 0 and toggled by code for each cycle.
  *
- * Because we are sending alternating positive and negative frames
- * with inverted data, and doing so with a much higher frequency
- * than the rate of data changes, we keep two arrays, one with the
- * data bits straight-through and one with D2..0 inverted.
- * Both need to be maintained on display content changes,
- * see lcd_commit ().
  */
-static uint8_t lcd_data_pos [] = {
-   0x27, 0x27, 0x27, 0x27, 0x27, 0x27, 0x27, 0x27,
-   0x27, 0x27, 0x27, 0x27, 0x27, 0x27, 0x27, 0x27
+struct lcd_bits_t
+{
+#define SEGBITS(N, D0, D1, D2)                                          \
+   uint8_t D0: 1;                                                       \
+   uint8_t D1: 1;                                                       \
+   uint8_t D2: 1;                                                       \
+   uint8_t fill_##N: 5
+
+   //           D0       D1       D2
+   SEGBITS (0,  seg_4dp, seg_col, seg_1g);
+   SEGBITS (1,  seg_4c,  seg_5g,  seg_1f);
+   SEGBITS (2,  seg_4d,  seg_5f,  seg_1a);
+   SEGBITS (3,  seg_4e,  seg_5a,  seg_1b);
+   SEGBITS (4,  seg_3dp, seg_5b,  seg_2g);
+   SEGBITS (5,  seg_3c,  seg_6g,  seg_2f);
+   SEGBITS (6,  seg_3d,  seg_6f,  seg_2a);
+   SEGBITS (7,  seg_3e,  seg_6a,  seg_2b);
+   SEGBITS (8,  seg_2dp, seg_6b,  seg_3g);
+   SEGBITS (9,  seg_2c,  seg_6c,  seg_3f);
+   SEGBITS (10, seg_2d,  seg_6d,  seg_3a);
+   SEGBITS (11, seg_2e,  seg_6e,  seg_3b);
+   SEGBITS (12, seg_1dp, seg_5dp, seg_4g);
+   SEGBITS (13, seg_1c,  seg_5c,  seg_4f);
+   SEGBITS (14, seg_1d,  seg_5d,  seg_4a);
+   SEGBITS (15, seg_1e,  seg_5e,  seg_4b);
+
+#undef SEGBITS
 };
-static uint8_t lcd_data_neg [] = {
-   0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-   0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20
-};
+struct lcd_bits_t lcd_bits;
+uint8_t* const lcd_data = (uint8_t *)&lcd_bits;
 
 void lcd_send_frame_pos ();
 void lcd_send_frame_neg ();
@@ -132,34 +70,8 @@ lcd_setup ()
    LCD_PORT = _BV (LCD_CLK) | _BV (LCD_OE_);
 
    // initialize for power-on display test
-   lcd_bits.raw_0 = 0xffff;
-   lcd_bits.raw_1 = 0xffff;
-   lcd_bits.raw_2 = 0xffff;
-}
-
-void
-lcd_commit ()
-{
-   uint8_t j = 0;
-   for (j = 0; j < 16; ++j)
-   {
-      uint16_t m = 1 << j;
-      uint8_t k = 0;
-      for (k = 0; k < 3; ++k)
-      {
-         uint8_t n = 1 << k;
-         if (lcd_data [k] & m)
-         {
-            lcd_data_pos [j] |= n;
-            lcd_data_neg [j] &= ~n;
-         }
-         else
-         {
-            lcd_data_pos [j] &= ~n;
-            lcd_data_neg [j] |= n;
-         }
-      }
-   }
+   for (uint8_t j = 0; j < 16; ++j)
+      lcd_data [j] = 0x27;
 }
 
 // Return 7-segment bits as 0gfedcba
@@ -190,58 +102,58 @@ lcd_set_digit (uint8_t idx, char c)
    switch (idx)
    {
    case 1:
-      lcd_bits.s2.seg_1a = seg & 1;
-      lcd_bits.s2.seg_1b = (seg & (1 << 1)) >> 1;
-      lcd_bits.s0.seg_1c = (seg & (1 << 2)) >> 2;
-      lcd_bits.s0.seg_1d = (seg & (1 << 3)) >> 3;
-      lcd_bits.s0.seg_1e = (seg & (1 << 4)) >> 4;
-      lcd_bits.s2.seg_1f = (seg & (1 << 5)) >> 5;
-      lcd_bits.s2.seg_1g = (seg & (1 << 6)) >> 6;
+      lcd_bits.seg_1a = seg & 1;
+      lcd_bits.seg_1b = (seg & (1 << 1)) >> 1;
+      lcd_bits.seg_1c = (seg & (1 << 2)) >> 2;
+      lcd_bits.seg_1d = (seg & (1 << 3)) >> 3;
+      lcd_bits.seg_1e = (seg & (1 << 4)) >> 4;
+      lcd_bits.seg_1f = (seg & (1 << 5)) >> 5;
+      lcd_bits.seg_1g = (seg & (1 << 6)) >> 6;
       break;
    case 2:
-      lcd_bits.s2.seg_2a = seg & 1;
-      lcd_bits.s2.seg_2b = (seg & (1 << 1)) >> 1;
-      lcd_bits.s0.seg_2c = (seg & (1 << 2)) >> 2;
-      lcd_bits.s0.seg_2d = (seg & (1 << 3)) >> 3;
-      lcd_bits.s0.seg_2e = (seg & (1 << 4)) >> 4;
-      lcd_bits.s2.seg_2f = (seg & (1 << 5)) >> 5;
-      lcd_bits.s2.seg_2g = (seg & (1 << 6)) >> 6;
+      lcd_bits.seg_2a = seg & 1;
+      lcd_bits.seg_2b = (seg & (1 << 1)) >> 1;
+      lcd_bits.seg_2c = (seg & (1 << 2)) >> 2;
+      lcd_bits.seg_2d = (seg & (1 << 3)) >> 3;
+      lcd_bits.seg_2e = (seg & (1 << 4)) >> 4;
+      lcd_bits.seg_2f = (seg & (1 << 5)) >> 5;
+      lcd_bits.seg_2g = (seg & (1 << 6)) >> 6;
       break;
    case 3:
-      lcd_bits.s2.seg_3a = seg & 1;
-      lcd_bits.s2.seg_3b = (seg & (1 << 1)) >> 1;
-      lcd_bits.s0.seg_3c = (seg & (1 << 2)) >> 2;
-      lcd_bits.s0.seg_3d = (seg & (1 << 3)) >> 3;
-      lcd_bits.s0.seg_3e = (seg & (1 << 4)) >> 4;
-      lcd_bits.s2.seg_3f = (seg & (1 << 5)) >> 5;
-      lcd_bits.s2.seg_3g = (seg & (1 << 6)) >> 6;
+      lcd_bits.seg_3a = seg & 1;
+      lcd_bits.seg_3b = (seg & (1 << 1)) >> 1;
+      lcd_bits.seg_3c = (seg & (1 << 2)) >> 2;
+      lcd_bits.seg_3d = (seg & (1 << 3)) >> 3;
+      lcd_bits.seg_3e = (seg & (1 << 4)) >> 4;
+      lcd_bits.seg_3f = (seg & (1 << 5)) >> 5;
+      lcd_bits.seg_3g = (seg & (1 << 6)) >> 6;
       break;
    case 4:
-      lcd_bits.s2.seg_4a = seg & 1;
-      lcd_bits.s2.seg_4b = (seg & (1 << 1)) >> 1;
-      lcd_bits.s0.seg_4c = (seg & (1 << 2)) >> 2;
-      lcd_bits.s0.seg_4d = (seg & (1 << 3)) >> 3;
-      lcd_bits.s0.seg_4e = (seg & (1 << 4)) >> 4;
-      lcd_bits.s2.seg_4f = (seg & (1 << 5)) >> 5;
-      lcd_bits.s2.seg_4g = (seg & (1 << 6)) >> 6;
+      lcd_bits.seg_4a = seg & 1;
+      lcd_bits.seg_4b = (seg & (1 << 1)) >> 1;
+      lcd_bits.seg_4c = (seg & (1 << 2)) >> 2;
+      lcd_bits.seg_4d = (seg & (1 << 3)) >> 3;
+      lcd_bits.seg_4e = (seg & (1 << 4)) >> 4;
+      lcd_bits.seg_4f = (seg & (1 << 5)) >> 5;
+      lcd_bits.seg_4g = (seg & (1 << 6)) >> 6;
       break;
    case 5:
-      lcd_bits.s1.seg_5a = seg & 1;
-      lcd_bits.s1.seg_5b = (seg & (1 << 1)) >> 1;
-      lcd_bits.s1.seg_5c = (seg & (1 << 2)) >> 2;
-      lcd_bits.s1.seg_5d = (seg & (1 << 3)) >> 3;
-      lcd_bits.s1.seg_5e = (seg & (1 << 4)) >> 4;
-      lcd_bits.s1.seg_5f = (seg & (1 << 5)) >> 5;
-      lcd_bits.s1.seg_5g = (seg & (1 << 6)) >> 6;
+      lcd_bits.seg_5a = seg & 1;
+      lcd_bits.seg_5b = (seg & (1 << 1)) >> 1;
+      lcd_bits.seg_5c = (seg & (1 << 2)) >> 2;
+      lcd_bits.seg_5d = (seg & (1 << 3)) >> 3;
+      lcd_bits.seg_5e = (seg & (1 << 4)) >> 4;
+      lcd_bits.seg_5f = (seg & (1 << 5)) >> 5;
+      lcd_bits.seg_5g = (seg & (1 << 6)) >> 6;
       break;
    case 6:
-      lcd_bits.s1.seg_6a = seg & 1;
-      lcd_bits.s1.seg_6b = (seg & (1 << 1)) >> 1;
-      lcd_bits.s1.seg_6c = (seg & (1 << 2)) >> 2;
-      lcd_bits.s1.seg_6d = (seg & (1 << 3)) >> 3;
-      lcd_bits.s1.seg_6e = (seg & (1 << 4)) >> 4;
-      lcd_bits.s1.seg_6f = (seg & (1 << 5)) >> 5;
-      lcd_bits.s1.seg_6g = (seg & (1 << 6)) >> 6;
+      lcd_bits.seg_6a = seg & 1;
+      lcd_bits.seg_6b = (seg & (1 << 1)) >> 1;
+      lcd_bits.seg_6c = (seg & (1 << 2)) >> 2;
+      lcd_bits.seg_6d = (seg & (1 << 3)) >> 3;
+      lcd_bits.seg_6e = (seg & (1 << 4)) >> 4;
+      lcd_bits.seg_6f = (seg & (1 << 5)) >> 5;
+      lcd_bits.seg_6g = (seg & (1 << 6)) >> 6;
       break;
    }
 }
@@ -252,46 +164,29 @@ lcd_set_dot (uint8_t idx, char c)
    switch (idx)
    {
    case 1:
-      lcd_bits.s0.seg_1dp = c & 1;
+      lcd_bits.seg_1dp = c & 1;
       break;
    case 2:
-      lcd_bits.s0.seg_2dp = c & 1;
+      lcd_bits.seg_2dp = c & 1;
       break;
    case 3:
-      lcd_bits.s0.seg_3dp = c & 1;
+      lcd_bits.seg_3dp = c & 1;
       break;
    case 4:
-      lcd_bits.s0.seg_4dp = c & 1;
+      lcd_bits.seg_4dp = c & 1;
       break;
    case 5:
-      lcd_bits.s1.seg_5dp = c & 1;
+      lcd_bits.seg_5dp = c & 1;
       break;
    }
 }
 
 void lcd_set_colons (char on)
 {
-   lcd_bits.s1.seg_col = on & 1;
+   lcd_bits.seg_col = on & 1;
 }
 
-void
-lcd_set_dot5_immediate (char c)
-{
-   lcd_bits.s1.seg_5dp = c & 1;
-
-   if (c)
-   {
-      lcd_data_pos [12] |= 0x2;
-      lcd_data_neg [12] &= ~0x2;
-   }
-   else
-   {
-      lcd_data_pos [12] &= ~0x2;
-      lcd_data_neg [12] |= 0x2;
-   }
-}
-
-// Runtime: 74 MCU clocks
+// Runtime: 54 (pos) / 63 (neg) MCU clocks
 void
 lcd_send_frame ()
 {
@@ -308,32 +203,34 @@ lcd_send_frame ()
 }
 
 // unrolled loop for ultimate speed (5 MCU clocks per LCD clock cycle)
-#define LCD_BIT_OUT(arr, n)                         \
-   v = arr [n];                                     \
-   LCD_PORT = v;                                    \
-   v |= _BV (LCD_CLK);                              \
-   LCD_PORT = v
+#define LCD_BIT_OUT_POS(arr, n)                     \
+   LCD_PORT = arr [n];                              \
+   LCD_PORT |= _BV (LCD_CLK);
+
+// unrolled loop for ultimate speed (6 MCU clocks per LCD clock cycle)
+#define LCD_BIT_OUT_NEG(arr, n)                     \
+   LCD_PORT = arr [n] ^ 0x07;                       \
+   LCD_PORT |= _BV (LCD_CLK);
 
 void
 lcd_send_frame_pos ()
 {
-   uint8_t v;
-   LCD_BIT_OUT (lcd_data_pos, 0);
-   LCD_BIT_OUT (lcd_data_pos, 1);
-   LCD_BIT_OUT (lcd_data_pos, 2);
-   LCD_BIT_OUT (lcd_data_pos, 3);
-   LCD_BIT_OUT (lcd_data_pos, 4);
-   LCD_BIT_OUT (lcd_data_pos, 5);
-   LCD_BIT_OUT (lcd_data_pos, 6);
-   LCD_BIT_OUT (lcd_data_pos, 7);
-   LCD_BIT_OUT (lcd_data_pos, 8);
-   LCD_BIT_OUT (lcd_data_pos, 9);
-   LCD_BIT_OUT (lcd_data_pos, 10);
-   LCD_BIT_OUT (lcd_data_pos, 11);
-   LCD_BIT_OUT (lcd_data_pos, 12);
-   LCD_BIT_OUT (lcd_data_pos, 13);
-   LCD_BIT_OUT (lcd_data_pos, 14);
-   LCD_BIT_OUT (lcd_data_pos, 15);
+   LCD_BIT_OUT_POS (lcd_data, 0);
+   LCD_BIT_OUT_POS (lcd_data, 1);
+   LCD_BIT_OUT_POS (lcd_data, 2);
+   LCD_BIT_OUT_POS (lcd_data, 3);
+   LCD_BIT_OUT_POS (lcd_data, 4);
+   LCD_BIT_OUT_POS (lcd_data, 5);
+   LCD_BIT_OUT_POS (lcd_data, 6);
+   LCD_BIT_OUT_POS (lcd_data, 7);
+   LCD_BIT_OUT_POS (lcd_data, 8);
+   LCD_BIT_OUT_POS (lcd_data, 9);
+   LCD_BIT_OUT_POS (lcd_data, 10);
+   LCD_BIT_OUT_POS (lcd_data, 11);
+   LCD_BIT_OUT_POS (lcd_data, 12);
+   LCD_BIT_OUT_POS (lcd_data, 13);
+   LCD_BIT_OUT_POS (lcd_data, 14);
+   LCD_BIT_OUT_POS (lcd_data, 15);
 
    // extra clock cycle to shift the last bits out + enable output
    LCD_PORT = _BV (LCD_OE_); // LCD_CLK low phase, output enable still off
@@ -342,27 +239,27 @@ lcd_send_frame_pos ()
 void
 lcd_send_frame_neg ()
 {
-   uint8_t v;
-   LCD_BIT_OUT (lcd_data_neg, 0);
-   LCD_BIT_OUT (lcd_data_neg, 1);
-   LCD_BIT_OUT (lcd_data_neg, 2);
-   LCD_BIT_OUT (lcd_data_neg, 3);
-   LCD_BIT_OUT (lcd_data_neg, 4);
-   LCD_BIT_OUT (lcd_data_neg, 5);
-   LCD_BIT_OUT (lcd_data_neg, 6);
-   LCD_BIT_OUT (lcd_data_neg, 7);
-   LCD_BIT_OUT (lcd_data_neg, 8);
-   LCD_BIT_OUT (lcd_data_neg, 9);
-   LCD_BIT_OUT (lcd_data_neg, 10);
-   LCD_BIT_OUT (lcd_data_neg, 11);
-   LCD_BIT_OUT (lcd_data_neg, 12);
-   LCD_BIT_OUT (lcd_data_neg, 13);
-   LCD_BIT_OUT (lcd_data_neg, 14);
-   LCD_BIT_OUT (lcd_data_neg, 15);
+   LCD_BIT_OUT_NEG (lcd_data, 0);
+   LCD_BIT_OUT_NEG (lcd_data, 1);
+   LCD_BIT_OUT_NEG (lcd_data, 2);
+   LCD_BIT_OUT_NEG (lcd_data, 3);
+   LCD_BIT_OUT_NEG (lcd_data, 4);
+   LCD_BIT_OUT_NEG (lcd_data, 5);
+   LCD_BIT_OUT_NEG (lcd_data, 6);
+   LCD_BIT_OUT_NEG (lcd_data, 7);
+   LCD_BIT_OUT_NEG (lcd_data, 8);
+   LCD_BIT_OUT_NEG (lcd_data, 9);
+   LCD_BIT_OUT_NEG (lcd_data, 10);
+   LCD_BIT_OUT_NEG (lcd_data, 11);
+   LCD_BIT_OUT_NEG (lcd_data, 12);
+   LCD_BIT_OUT_NEG (lcd_data, 13);
+   LCD_BIT_OUT_NEG (lcd_data, 14);
+   LCD_BIT_OUT_NEG (lcd_data, 15);
 
    // extra clock cycle to shift the last bits out + enable output
    LCD_PORT = _BV (LCD_OE_); // LCD_CLK low phase, output enable still off
    LCD_PORT = _BV (LCD_COM) | _BV (LCD_CLK); // LCD_CLK high phase, output enable ON
 }
 
-#undef LCD_BIT_OUT
+#undef LCD_BIT_OUT_POS
+#undef LCD_BIT_OUT_NEG

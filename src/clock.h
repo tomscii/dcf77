@@ -13,11 +13,11 @@ struct clock_t
    char minutes;
    char hours;
 
-   char day;
-   char month;
-   char year; // mod 100
-   char dow; // day of week, 1..7, 1=Monday
-   char dst;
+   char day;   // day of month, 1..31
+   char month; // month, 1..12
+   char year;  // mod 100
+   char dow;   // day of week, 1..7, 1=Monday
+   char dst;   // 1 if DST is in effect (CEST), 0 if not (CET)
 };
 extern struct clock_t clock;
 

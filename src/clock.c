@@ -79,6 +79,27 @@ ISR (TIMER1_OVF_vect)
    clock_flags.tick = 1;
 }
 
+static const char month_days [13] =
+{
+   31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+};
+
+char
+days_of_month (char year, char month)
+{
+   if (month == 2)
+   {
+      if (year % 4)
+         return 28;
+      else if (year % 100)
+         return 29;
+      else
+         return 28;
+   }
+   else
+      return month_days [month - 1];
+}
+
 void
 clock_plus_jiffy ()
 {
@@ -93,7 +114,25 @@ clock_plus_jiffy ()
          {
             clock.minutes = 0;
             if (++clock.hours == 24)
+            {
                clock.hours = 0;
+               if (++clock.day > days_of_month (clock.year, clock.month))
+               {
+                  clock.day = 1;
+                  if (++clock.month > 12)
+                  {
+                     clock.month = 1;
+                     if (++clock.year == 100)
+                     {
+                        clock.year = 0;
+                     }
+                  }
+               }
+               if (++clock.dow > 7)
+               {
+                  clock.dow = 1;
+               }
+            }
          }
       }
    }

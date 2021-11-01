@@ -366,7 +366,16 @@ void dcf77_on_second ()
       int32_t ppm_adj = 0;
       if (has_been_synced)
       {
-         if (clock.dst == dcf77_clock.dst)
+         if (clock.dst != dcf77_clock.dst)
+         {
+            put_str ("DST change\r\n");
+         }
+         else if (dcf77_clock.day == 1)
+         {
+            // possible leap second at the end of last month; skip adjustment
+            put_str ("month change\r\n");
+         }
+         else
          {
             int16_t dt = // numeric range covers for >~10 minutes of discrepancy
                ((clock.hours - dcf77_clock.hours) * 60 +
@@ -385,10 +394,6 @@ void dcf77_on_second ()
             put_str (" ppm_adj=");
             put_q4_11 (ppm_adj);
             put_str ("\r\n");
-         }
-         else
-         {
-            put_str ("DST change\r\n");
          }
       }
 

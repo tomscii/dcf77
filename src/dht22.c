@@ -159,6 +159,7 @@ void dht22_read ()
       {
          //temp *= -1;
          putchar ('-');
+         traw &= 0x7fff;
       }
       put_uint (traw / 10);
       putchar ('.');

@@ -3,6 +3,7 @@
 #include "dcf77.h"
 #include "dht22.h"
 #include "lcd.h"
+#include "pbtn.h"
 #include "pwm.h"
 #include "usart.h"
 #include "utils.h"
@@ -15,6 +16,14 @@
 #include <avr/sleep.h>
 
 #include <util/delay.h>
+
+enum screen_t
+{
+   S_TIME_OF_DAY = 0, S_DATE, S_DAY_OF_WEEK, //S_TEMPERATURE, S_HUMIDITY,
+   S_COUNT
+};
+enum screen_t screen = S_TIME_OF_DAY;
+char display_full_update = 1;
 
 #define INPUT_BUFSIZE 16
 char input [INPUT_BUFSIZE];
@@ -52,6 +61,7 @@ ioinit (void)
    dcf77_setup ();
    dht22_setup ();
    lcd_setup ();
+   pbtn_setup ();
    pwm_setup ();
 
    sei ();
@@ -169,6 +179,165 @@ process_input ()
 }
 
 void
+display_tod ()
+{
+   if (clock_flags.ovf_minutes || display_full_update)
+   {
+      clock_flags.ovf_minutes = 0;
+
+      if (clock.hours < 10)
+         lcd_set_digit (1, ' ');
+      else
+         lcd_set_digit (1, '0' + (clock.hours / 10));
+      lcd_set_digit (2, '0' + (clock.hours % 10));
+   }
+   if (clock_flags.ovf_seconds || display_full_update)
+   {
+      clock_flags.ovf_seconds = 0;
+
+      lcd_set_digit (3, '0' + (clock.minutes / 10));
+      lcd_set_digit (4, '0' + (clock.minutes % 10));
+   }
+
+   lcd_set_digit (5, '0' + (clock.seconds / 10));
+   lcd_set_digit (6, '0' + (clock.seconds % 10));
+
+   lcd_set_dot (2, clock.dst);
+
+   if (display_full_update)
+   {
+      lcd_set_dot (1, 0);
+      lcd_set_dot (3, 0);
+      lcd_set_dot (4, 0);
+      lcd_set_colons (1);
+   }
+}
+
+void
+display_date ()
+{
+   if (clock_flags.ovf_months || display_full_update)
+   {
+      clock_flags.ovf_months = 0;
+
+      lcd_set_digit (1, '0' + (clock.year / 10));
+      lcd_set_digit (2, '0' + (clock.year % 10));
+   }
+   if (clock_flags.ovf_days || display_full_update)
+   {
+      clock_flags.ovf_days = 0;
+
+      lcd_set_digit (3, '0' + (clock.month / 10));
+      lcd_set_digit (4, '0' + (clock.month % 10));
+   }
+   if (clock_flags.ovf_hours || display_full_update)
+   {
+      clock_flags.ovf_hours = 0;
+
+      lcd_set_digit (5, '0' + (clock.day / 10));
+      lcd_set_digit (6, '0' + (clock.day % 10));
+   }
+   if (display_full_update)
+   {
+      lcd_set_dot (1, 0);
+      lcd_set_dot (2, 1);
+      lcd_set_dot (3, 0);
+      lcd_set_dot (4, 1);
+      lcd_set_colons (0);
+   }
+}
+
+void
+display_dow ()
+{
+   if (clock_flags.ovf_hours || display_full_update)
+   {
+      clock_flags.ovf_hours = 0;
+
+      lcd_set_digit (4, '0' + (clock.dow));
+   }
+   if (display_full_update)
+   {
+      lcd_set_digit (1, ' ');
+      lcd_set_digit (2, ' ');
+      lcd_set_digit (3, 'd');
+      lcd_set_digit (5, ' ');
+      lcd_set_digit (6, ' ');
+      lcd_set_dot (1, 0);
+      lcd_set_dot (2, 0);
+      lcd_set_dot (3, 1);
+      lcd_set_dot (4, 0);
+      lcd_set_colons (0);
+   }
+}
+
+void
+display_blank ()
+{
+   if (display_full_update)
+   {
+      lcd_set_digit (1, ' ');
+      lcd_set_digit (2, ' ');
+      lcd_set_digit (3, ' ');
+      lcd_set_digit (4, ' ');
+      lcd_set_digit (5, ' ');
+      lcd_set_digit (6, ' ');
+      lcd_set_dot (1, 0);
+      lcd_set_dot (2, 0);
+      lcd_set_dot (3, 0);
+      lcd_set_dot (4, 0);
+      lcd_set_colons (0);
+   }
+}
+
+void
+display_update ()
+{
+   switch (screen)
+   {
+   case S_TIME_OF_DAY: display_tod (); break;
+   case S_DATE:        display_date (); break;
+   case S_DAY_OF_WEEK: display_dow (); break;
+   default: display_blank (); break;
+      /*
+   case S_TEMPERATURE: display_blank (); break;
+   case S_HUMIDITY:    display_blank (); break;
+      */
+   }
+
+   display_full_update = 0;
+
+}
+
+void
+process_event (uint8_t evt)
+{
+   if (evt & F_EVT_LONG)
+   {
+      if ((evt & F_BTN_MASK) == (F_BTN_MODE | F_BTN_ADJ))
+      {
+         dcf77_schedule_sync ();
+         return;
+      }
+   }
+   else if (evt & F_EVT_REGULAR)
+   {
+      if ((evt & F_BTN_MASK) == F_BTN_MODE)
+      {
+         if (++screen == S_COUNT)
+            screen = 0;
+
+         display_full_update = 1;
+
+         return;
+      }
+   }
+   put_str ("evt=");
+   put_byte_hex (evt);
+   put_str ("\r\n");
+}
+
+void
 main_loop ()
 {
    if (clock_flags.tick)
@@ -176,27 +345,13 @@ main_loop ()
       clock_flags.tick = 0;
 
       dcf77_on_tick ();
+      pbtn_on_tick ();
 
       if (clock_flags.ovf_jiffies)
       {
          clock_flags.ovf_jiffies = 0;
 
          dcf77_on_second ();
-
-         if (clock.hours < 10)
-            lcd_set_digit (1, ' ');
-         else
-            lcd_set_digit (1, '0' + (clock.hours / 10));
-         lcd_set_digit (2, '0' + (clock.hours % 10));
-         lcd_set_digit (3, '0' + (clock.minutes / 10));
-         lcd_set_digit (4, '0' + (clock.minutes % 10));
-         lcd_set_digit (5, '0' + (clock.seconds / 10));
-         lcd_set_digit (6, '0' + (clock.seconds % 10));
-         lcd_set_dot (1, 0);
-         lcd_set_dot (2, clock.dst);
-         lcd_set_dot (3, 0);
-         lcd_set_dot (4, 0);
-         lcd_set_colons (1);
 
          if (echo)
          {
@@ -208,7 +363,7 @@ main_loop ()
             put_str ("\r\n");
          }
       }
-
+      display_update ();
       lcd_send_frame ();
    }
 
@@ -228,6 +383,12 @@ main_loop ()
          process_input ();
       }
       clearerr (stdin);
+   }
+
+   if (!pbtn_flags.ack_event && pbtn_flags.pending_event)
+   {
+      process_event (pbtn_flags.pending_event);
+      pbtn_flags.ack_event = 1;
    }
 }
 

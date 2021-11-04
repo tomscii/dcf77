@@ -26,6 +26,11 @@ struct clock_flags_t
 {
    uint8_t tick: 1;
    uint8_t ovf_jiffies: 1;
+   uint8_t ovf_seconds: 1;
+   uint8_t ovf_minutes: 1;
+   uint8_t ovf_hours: 1;
+   uint8_t ovf_days: 1;
+   uint8_t ovf_months: 1;
 };
 extern volatile struct clock_flags_t clock_flags;
 

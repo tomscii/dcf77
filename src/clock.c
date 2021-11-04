@@ -110,18 +110,23 @@ clock_plus_jiffy ()
       if (++clock.seconds == 60)
       {
          clock.seconds = 0;
+         clock_flags.ovf_seconds = 1;
          if (++clock.minutes == 60)
          {
             clock.minutes = 0;
+            clock_flags.ovf_minutes = 1;
             if (++clock.hours == 24)
             {
                clock.hours = 0;
+               clock_flags.ovf_hours = 1;
                if (++clock.day > days_of_month (clock.year, clock.month))
                {
                   clock.day = 1;
+                  clock_flags.ovf_days = 1;
                   if (++clock.month > 12)
                   {
                      clock.month = 1;
+                     clock_flags.ovf_months = 1;
                      if (++clock.year == 100)
                      {
                         clock.year = 0;
@@ -172,6 +177,12 @@ clock_set (const struct clock_t* ref)
    clock.minutes = ref->minutes;
    clock.seconds = ref->seconds;
    sei ();
+
+   clock_flags.ovf_seconds = 1;
+   clock_flags.ovf_minutes = 1;
+   clock_flags.ovf_hours = 1;
+   clock_flags.ovf_days = 1;
+   clock_flags.ovf_months = 1;
 }
 
 void
@@ -184,6 +195,10 @@ clock_set_hms (char hours, char minutes, char seconds)
    clock.jiffies = 0;
    TCNT1 = 0;
    sei ();
+
+   clock_flags.ovf_seconds = 1;
+   clock_flags.ovf_minutes = 1;
+   clock_flags.ovf_hours = 1;
 }
 
 void

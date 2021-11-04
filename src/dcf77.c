@@ -43,7 +43,12 @@ struct clock_t dcf77_clock;
 uint8_t has_been_synced = 0;
 int32_t seconds_since_last_sync; // N.B.: signed for the sake of computation
 uint8_t acc_drift_phase = 0;
-int32_t sync_ttl = 3600; // seconds before a new sync will be attempted
+
+enum sync_policy_t
+{
+   SYNC_ASAP, SYNC_HOURLY, SYNC_3HOURLY, SYNC_DAILY
+};
+enum sync_policy_t sync_policy = SYNC_ASAP;
 
 void dcf77_setup ()
 {
@@ -72,6 +77,12 @@ void dcf77_power_set (char on)
    }
 
    lcd_set_dot (5, on);
+}
+
+void dcf77_schedule_sync ()
+{
+   if (state == POWEROFF)
+      sync_policy = SYNC_ASAP;
 }
 
 void bcd_decode (char* data, char count, char* parity, char* result)
@@ -256,17 +267,35 @@ void dcf77_on_second ()
    switch (state)
    {
    case POWEROFF:
-      if ((clock.hours == 3 && clock.minutes == 0 && clock.seconds == 0) ||
-          sync_ttl == 0)
+   {
+      char doSync = 0;
+      switch (sync_policy)
+      {
+      case SYNC_ASAP:
+         doSync = 1;
+         break;
+      case SYNC_HOURLY:
+         if (clock.minutes == 0 && clock.seconds == 0)
+            doSync = 1;
+         break;
+      case SYNC_3HOURLY:
+         if ((clock.hours % 3) == 0 && clock.minutes == 0 && clock.seconds == 0)
+            doSync = 1;
+         break;
+      case SYNC_DAILY:
+         if (clock.hours == 3 && clock.minutes == 0 && clock.seconds == 0)
+            doSync = 1;
+         break;
+      }
+      if (doSync)
       {
          dcf77_power_set (1);
          state = WARMUP;
          state_seconds = 0;
          put_str (" -> WARMUP\r\n");
       }
-      else
-         -- sync_ttl;
-      break;
+   }
+   break;
 
    case WARMUP:
       if (++ state_seconds == 6)
@@ -343,7 +372,7 @@ void dcf77_on_second ()
             dcf77_power_set (0);
             state = POWEROFF;
             state_seconds = 0;
-            sync_ttl = 3600;
+            sync_policy = has_been_synced ? SYNC_DAILY : SYNC_HOURLY;
             put_str (" -> POWEROFF\r\n");
          }
       }
@@ -356,13 +385,14 @@ void dcf77_on_second ()
          dcf77_power_set (0);
          state = POWEROFF;
          state_seconds = 0;
-         sync_ttl = 3600;
+         sync_policy = has_been_synced ? SYNC_DAILY : SYNC_HOURLY;
          put_str (" -> POWEROFF\r\n");
       }
       break;
 
    case SYNCED:
    {
+      char bad_sync = 0;
       int32_t ppm_adj = 0;
       if (has_been_synced)
       {
@@ -377,35 +407,53 @@ void dcf77_on_second ()
          }
          else
          {
-            int16_t dt = // numeric range covers for >~10 minutes of discrepancy
+            int16_t dt =
                ((clock.hours - dcf77_clock.hours) * 60 +
                 (clock.minutes - dcf77_clock.minutes)) * 60 +
                clock.seconds; // dcf77_clock.seconds is zero
-            // convert from seconds to jiffies and add accumulated phase drift:
-            dt = F_TICK * dt + acc_drift_phase;
 
-            // Q4.11 range of ppm_adj === |dt| < 69 jiffies @ daily sync
-            ppm_adj = -2048 * 1000000L / seconds_since_last_sync * dt / F_TICK;
+            if (dt < -300 || dt > 300)
+            {
+               // if off by more than 5 minutes, write it off as bogus reception
+               put_str ("bad sync\r\n");
+               bad_sync = 1;
+            }
+            else
+            {
+               // convert from seconds to jiffies and add accumulated phase drift;
+               // numeric range now covers for >~10 minutes of discrepancy
+               dt = F_TICK * dt + acc_drift_phase;
 
-            put_str ("adp=");
-            put_uint (acc_drift_phase);
-            put_str (" dt=");
-            put_int (dt);
-            put_str (" ppm_adj=");
-            put_q4_11 (ppm_adj);
-            put_str ("\r\n");
+               // Q4.11 range of ppm_adj === |dt| < 69 jiffies @ daily sync
+               ppm_adj = -2048 * 1000000L / seconds_since_last_sync * dt / F_TICK;
+
+               put_str ("adp=");
+               put_uint (acc_drift_phase);
+               put_str (" dt=");
+               put_int (dt);
+               put_str (" ppm_adj=");
+               put_q4_11 (ppm_adj);
+               put_str ("\r\n");
+            }
          }
       }
 
-      clock_set (&dcf77_clock);
-      seconds_since_last_sync = 0;
-      has_been_synced = 1;
-      acc_drift_phase = 0;
+      if (bad_sync)
+      {
+         sync_policy = has_been_synced ? SYNC_3HOURLY : SYNC_HOURLY;
+      }
+      else
+      {
+         clock_set (&dcf77_clock);
+         seconds_since_last_sync = 0;
+         has_been_synced = 1;
+         acc_drift_phase = 0;
+         sync_policy = SYNC_DAILY;
+      }
 
       dcf77_power_set (0);
       state = POWEROFF;
       state_seconds = 0;
-      sync_ttl = 86400L;
       put_str (" -> POWEROFF\r\n");
 
       if (ppm_adj)

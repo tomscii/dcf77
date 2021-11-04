@@ -91,6 +91,7 @@ decode_segments (char c)
    case '7': return 0x07;
    case '8': return 0x7f;
    case '9': return 0x6f;
+   case 'd': return 0x5e;
    }
    return 0xff;
 }

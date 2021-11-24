@@ -20,8 +20,8 @@ enum dcf77_state_t
 {
    POWEROFF, WARMUP, PHASE_ACQ, FRAME_ACQ, SYNCED
 };
-enum dcf77_state_t state = POWEROFF;
-uint16_t state_seconds = 0; // seconds since state transition
+static enum dcf77_state_t state = POWEROFF;
+static int state_seconds = 0; // seconds since state transition
 
 uint8_t phase_acc [F_TICK]; // cumulative no. of active level observations
 

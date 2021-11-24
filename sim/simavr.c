@@ -23,6 +23,7 @@ AVR_MCU_VCD_IRQ (USART_RX);
 //AVR_MCU_SIMAVR_CONSOLE (&GPIOR0);
 
 const struct avr_mmcu_vcd_trace_t _mytrace[]  _MMCU_ = {
+   { AVR_MCU_VCD_SYMBOL ("GPIOR0"), .what = (void*)&GPIOR0, },
    { AVR_MCU_VCD_SYMBOL ("OCR1AH"), .what = (void*)&OCR1AH, },
    { AVR_MCU_VCD_SYMBOL ("OCR1AL"), .what = (void*)&OCR1AL, },
    { AVR_MCU_VCD_SYMBOL ("UDR0"), .what = (void*)&UDR0, },

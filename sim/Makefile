@@ -3,7 +3,7 @@
 MCU = atmega328p
 
 AVR_DEBUG_FLAG = -gdwarf-2
-AVR_CPPFLAGS = -std=c11 -fsigned-char -Wall -g -Og --short-enums
+AVR_CPPFLAGS = -std=c11 -fsigned-char -Wall -g -Og --short-enums -DSIMAVR
 
 CPPFLAGS = -g -Og
 ADD_LIBS = -lutil

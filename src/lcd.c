@@ -81,6 +81,7 @@ decode_segments (char c)
    switch (c)
    {
    case ' ': return 0x00;
+   case '-': return 0x40;
    case '0': return 0x3f;
    case '1': return 0x06;
    case '2': return 0x5b;
@@ -92,6 +93,10 @@ decode_segments (char c)
    case '8': return 0x7f;
    case '9': return 0x6f;
    case 'd': return 0x5e;
+   case 'r': return 0x50;
+   case 'h': return 0x74;
+   case '*': return 0x63; // degree sign
+   case 'C': return 0x39;
    }
    return 0xff;
 }

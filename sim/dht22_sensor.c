@@ -209,6 +209,8 @@ dht22_sensor_set (dht22_sensor_t* p, int rh, int temp)
       temp_lo = temp & 0xff;
    }
    uint8_t checksum = rh_hi + rh_lo + temp_hi + temp_lo;
+   printf ("dht22: data = %02x %02x %02x %02x %02x\n",
+           rh_hi, rh_lo, temp_hi, temp_lo, checksum);
    int k = 0;
 
    p->bits [k++] = (rh_hi & 0x80) != 0;

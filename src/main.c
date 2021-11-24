@@ -15,11 +15,9 @@
 #include <avr/power.h>
 #include <avr/sleep.h>
 
-#include <util/delay.h>
-
 enum screen_t
 {
-   S_TIME_OF_DAY = 0, S_DATE, S_DAY_OF_WEEK, //S_TEMPERATURE, S_HUMIDITY,
+   S_TIME_OF_DAY = 0, S_DATE, S_DAY_OF_WEEK, S_TEMPERATURE, S_HUMIDITY,
    S_COUNT
 };
 enum screen_t screen = S_TIME_OF_DAY;
@@ -120,9 +118,7 @@ process_input ()
       input_count = 0;
       break;
    case 'm': // measure humidity + temperature sensor
-      dht22_trigger ();
-      _delay_ms (1);
-      dht22_read ();
+      dht22_schedule ();
       input_count = 0;
       break;
    case 'w': // DHT22 power on
@@ -272,6 +268,90 @@ display_dow ()
 }
 
 void
+display_temp ()
+{
+   if (dht22_status.updated || display_full_update)
+   {
+      dht22_status.updated = 0;
+
+      int16_t temp = dht22_status.temp_last;
+      if (temp < -99)
+      {
+         lcd_set_digit (1, '-');
+         temp = -temp;
+         lcd_set_digit (2, '0' + temp / 100);
+      }
+      else if (temp < 0)
+      {
+         lcd_set_digit (1, ' ');
+         lcd_set_digit (2, '-');
+         temp = -temp;
+      }
+      else if (temp < 100)
+      {
+         lcd_set_digit (1, ' ');
+         lcd_set_digit (2, ' ');
+      }
+      else
+      {
+         lcd_set_digit (1, ' ');
+         lcd_set_digit (2, '0' + temp / 100);
+      }
+      lcd_set_digit (3, '0' + (temp % 100) / 10);
+      lcd_set_digit (4, '0' + (temp % 10));
+   }
+   if (display_full_update)
+   {
+      lcd_set_digit (5, '*'); // degree sign
+      lcd_set_digit (6, 'C');
+      lcd_set_dot (1, 0);
+      lcd_set_dot (2, 0);
+      lcd_set_dot (3, 1);
+      lcd_set_dot (4, 0);
+      lcd_set_colons (0);
+   }
+}
+
+void
+display_rh ()
+{
+   if (dht22_status.updated || display_full_update)
+   {
+      dht22_status.updated = 0;
+
+      int16_t rh = dht22_status.rh_last;
+      if (rh >= 1000)
+      {
+         lcd_set_digit (1, '1');
+         lcd_set_digit (2, '0' + (rh - 1000) / 100);
+      }
+      else if (rh >= 100)
+      {
+         lcd_set_digit (1, ' ');
+         lcd_set_digit (2, '0' + rh / 100);
+      }
+      else
+      {
+         lcd_set_digit (1, ' ');
+         lcd_set_digit (2, ' ');
+      }
+
+      lcd_set_digit (3, '0' + (rh % 100) / 10);
+      lcd_set_digit (4, '0' + (rh % 10));
+   }
+   if (display_full_update)
+   {
+      lcd_set_digit (5, 'r');
+      lcd_set_digit (6, 'h');
+      lcd_set_dot (1, 0);
+      lcd_set_dot (2, 0);
+      lcd_set_dot (3, 1);
+      lcd_set_dot (4, 0);
+      lcd_set_colons (0);
+   }
+}
+
+void
 display_blank ()
 {
    if (display_full_update)
@@ -298,11 +378,9 @@ display_update ()
    case S_TIME_OF_DAY: display_tod (); break;
    case S_DATE:        display_date (); break;
    case S_DAY_OF_WEEK: display_dow (); break;
+   case S_TEMPERATURE: display_temp (); break;
+   case S_HUMIDITY:    display_rh (); break;
    default: display_blank (); break;
-      /*
-   case S_TEMPERATURE: display_blank (); break;
-   case S_HUMIDITY:    display_blank (); break;
-      */
    }
 
    display_full_update = 0;
@@ -327,6 +405,8 @@ process_event (uint8_t evt)
          if (++screen == S_COUNT)
             screen = 0;
 
+         dht22_measure_interval (screen == S_TEMPERATURE || screen == S_HUMIDITY);
+
          display_full_update = 1;
 
          return;
@@ -342,15 +422,11 @@ main_loop ()
 {
    if (clock_flags.tick)
    {
-      clock_flags.tick = 0;
-
       dcf77_on_tick ();
       pbtn_on_tick ();
 
       if (clock_flags.ovf_jiffies)
       {
-         clock_flags.ovf_jiffies = 0;
-
          dcf77_on_second ();
 
          if (echo)
@@ -365,7 +441,16 @@ main_loop ()
       }
       display_update ();
       lcd_send_frame ();
+
+      dht22_on_tick ();
+
+      if (clock_flags.ovf_jiffies)
+      {
+         dht22_on_second ();
+      }
+      clock_flags.ovf_jiffies = 0;
    }
+   clock_flags.tick = 0;
 
    if (usart_flags.rx)
    {

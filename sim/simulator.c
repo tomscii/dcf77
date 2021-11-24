@@ -143,9 +143,12 @@ main (int argc, char *argv[])
    avr_irq_t* i_dht22_data = avr_io_getirq (avr, AVR_IOCTL_IOPORT_GETIRQ ('D'), 2);
    dht22_sensor_init (avr, &dht22_sensor, i_dht22_data);
 
-   //dht22_sensor_set (&dht22_sensor, 652, 351);  //  65.2% RH,  35.1'C
-   dht22_sensor_set (&dht22_sensor, 356, 237);  //  35.6% RH,  23.7'C
-   //dht22_sensor_set (&dht22_sensor, 1000, -157);  // 100.0% RH, -15.7'C
+   // N.B.: look for lines starting at "#if SIMAVR" in ../src/dht22.c
+   dht22_sensor_set (&dht22_sensor, 652, 351);  //  35.1'C  RH 65.2%
+   //dht22_sensor_set (&dht22_sensor, 356, 237);  //  23.7'C  RH 35.6%
+   //dht22_sensor_set (&dht22_sensor, 789, 45);  //  4.5'C  RH 78.9%
+   //dht22_sensor_set (&dht22_sensor, 63, -72);  //  -7.2'C  RH 6.3%
+   //dht22_sensor_set (&dht22_sensor, 1000, -159);  // -15.9'C  RH 100.0%
 
    // we connect the MCU pins -> sensor module pins, but the sensor module
    // will drive the MCU pin for DATA directly.

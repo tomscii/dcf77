@@ -35,6 +35,10 @@ static int state_seconds = 0;  // seconds since state transition
 uint8_t scheduled = 0;
 static int measure_interval = DHT22_MEASURE_PERIOD_BACKGROUND;
 
+// number of readouts since sensor was powered on
+// (needed b/c the first readout will not be reliable)
+static int n_powered_readouts = 0;
+
 struct dht22_status_t dht22_status;
 
 // POSTPROC state
@@ -55,7 +59,7 @@ void dht22_setup ()
    dht22_blank ();
    state = WARMUP;
    state_seconds = 0;
-   scheduled = 1;
+   n_powered_readouts = 0;
 }
 
 void dht22_blank ()
@@ -95,9 +99,9 @@ void dht22_schedule ()
       dht22_power_set (1);
       state = WARMUP;
       state_seconds = 0;
+      n_powered_readouts = 0;
    }
-
-   if (state < MEASURE)
+   else
       scheduled = 1;
 }
 
@@ -135,10 +139,9 @@ void dht22_on_second ()
       break;
 
    case WARMUP:
-      if (++state_seconds == 2)
+      if (++state_seconds == 3)
       {
-         state = scheduled ? MEASURE : IDLE;
-         scheduled = 0;
+         state = MEASURE;
          state_seconds = 0;
       }
       break;
@@ -382,11 +385,19 @@ void dht22_result ()
          if (dht22_status.temp_max < dht22_status.temp_last)
             dht22_status.temp_max = dht22_status.temp_last;
       }
+
+      state = n_powered_readouts > 0 ? IDLE : WARMUP;
+      state_seconds = 0;
+      ++n_powered_readouts;
+
       dht22_status.updated = 1;
    }
    else
+   {
       put_str ("checksum error\r\n");
 
-   state = IDLE;
-   state_seconds = 0;
+      // Retry ...
+      state = WARMUP;
+      state_seconds = 0;
+   }
 }

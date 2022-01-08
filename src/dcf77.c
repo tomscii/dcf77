@@ -405,6 +405,14 @@ void dcf77_on_second ()
             // possible leap second at the end of last month; skip adjustment
             put_str ("month change\r\n");
          }
+         else if (clock.day != dcf77_clock.day ||
+                  clock.dow != dcf77_clock.dow ||
+                  clock.month != dcf77_clock.month ||
+                  clock.year != dcf77_clock.year)
+         {
+               put_str ("bad sync (date)\r\n");
+               bad_sync = 1;
+         }
          else
          {
             int16_t dt =

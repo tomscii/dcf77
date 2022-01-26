@@ -23,11 +23,18 @@ https://www.electrokit.com/produkt/utvecklingskort-atmega328p-nano-kompatibelt/ 
 (LCD 0.5" 6-digit 7-segment reflective
 https://www.electrokit.com/produkt/lcd-0-5-6-siffror-reflective/ 67.50 kr)
 
-(LCD 0.5" 6-digit 7-segment transmissive
-https://www.electrokit.com/produkt/lcd-0-5-6-siffror-transmissive/ 39.00 kr)
+(LCD 0.5" 6-digit 7-segment transflective
+https://www.electrokit.com/produkt/lcd-0-5-6-siffror-transflective/ 73.75 kr)
 
-LCD 0.5" 6-digit 7-segment transflective
-https://www.electrokit.com/produkt/lcd-0-5-6-siffror-transflective/ 73.75 kr
+LCD 0.5" 6-digit 7-segment transmissive
+https://www.electrokit.com/produkt/lcd-0-5-6-siffror-transmissive/ 39.00 kr
+
+Backlight for LCD
+https://www.electrokit.com/produkt/bakgrundsbelysning-for-lcd-78-5-x-23mm/ 30.00 kr
+
+Note: it is the transmissive LCD that works best with the backlight.
+Having the backlight module behind the LCD, even with no light, makes
+the LCD clearly visible (gives it a clear background).
 
 74HC595 DIP-16 8-bit shift register with output latches
 https://www.electrokit.com/produkt/74hc595-dip-16-8-bit-shift-register-with-output-latches/

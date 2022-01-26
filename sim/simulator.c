@@ -34,10 +34,18 @@ dcf77_rcvr_t dcf77_rcvr;
 dht22_sensor_t dht22_sensor;
 lcd_display_t lcd_display;
 
+FILE* gui_in = NULL;
+FILE* gui_out = NULL;
+
 void
 pwm_changed_hook (struct avr_irq_t * irq, uint32_t value, void * param)
 {
    printf ("pwm: %s=%d\n", (char*)param, value);
+
+   if (!strcmp ((char*)param, "red"))
+   {
+      fprintf (gui_in, "bg: %d\n", 255 - value);
+   }
 }
 
 void *
@@ -97,8 +105,8 @@ main (int argc, char *argv[])
    }
 
    // parent
-   FILE* gui_in = fdopen (sim2gui_fds [1], "w");
-   FILE* gui_out = fdopen (gui2sim_fds [0], "r");
+   gui_in = fdopen (sim2gui_fds [1], "w");
+   gui_out = fdopen (gui2sim_fds [0], "r");
    close (sim2gui_fds [0]);
    close (gui2sim_fds [1]);
 

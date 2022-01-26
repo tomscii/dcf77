@@ -1,5 +1,6 @@
-#include "common.h"
+#include "backlight.h"
 #include "clock.h"
+#include "common.h"
 #include "dcf77.h"
 #include "dht22.h"
 #include "lcd.h"
@@ -395,6 +396,7 @@ process_event (uint8_t evt)
       if ((evt & F_BTN_MASK) == (F_BTN_MODE | F_BTN_ADJ))
       {
          dcf77_schedule_sync ();
+         backlight_set (0); // cut PWM interference to DCF receiver
          return;
       }
    }
@@ -402,16 +404,22 @@ process_event (uint8_t evt)
    {
       if ((evt & F_BTN_MASK) == F_BTN_MODE)
       {
-         if (++screen == S_COUNT)
-            screen = 0;
+         if (backlight_set (1))
+         {
+            // backlight was already on
 
-         dht22_measure_interval (screen == S_TEMPERATURE || screen == S_HUMIDITY);
+            if (++screen == S_COUNT)
+               screen = 0;
 
-         display_full_update = 1;
+            dht22_measure_interval (screen == S_TEMPERATURE || screen == S_HUMIDITY);
 
+            display_full_update = 1;
+         }
          return;
       }
    }
+
+   // currently unhandled:
    put_str ("evt=");
    put_byte_hex (evt);
    put_str ("\r\n");
@@ -443,11 +451,12 @@ main_loop ()
       lcd_send_frame ();
 
       dht22_on_tick ();
-
       if (clock_flags.ovf_jiffies)
       {
          dht22_on_second ();
       }
+
+      backlight_on_tick ();
       clock_flags.ovf_jiffies = 0;
    }
    clock_flags.tick = 0;

@@ -389,40 +389,56 @@ display_update ()
 }
 
 void
+next_screen ()
+{
+   if (++screen == S_COUNT)
+      screen = 0;
+
+   dht22_measure_interval (screen == S_TEMPERATURE || screen == S_HUMIDITY);
+
+   display_full_update = 1;
+}
+
+void
 process_event (uint8_t evt)
 {
-   if (evt & F_EVT_LONG)
-   {
-      if ((evt & F_BTN_MASK) == (F_BTN_MODE | F_BTN_ADJ))
-      {
-         dcf77_schedule_sync ();
-         backlight_set (0); // cut PWM interference to DCF receiver
-         return;
-      }
-   }
-   else if (evt & F_EVT_REGULAR)
+   if (evt & F_EVT_TOUCH)
    {
       if ((evt & F_BTN_MASK) == F_BTN_MODE)
       {
          if (backlight_set (1))
          {
             // backlight was already on
-
-            if (++screen == S_COUNT)
-               screen = 0;
-
-            dht22_measure_interval (screen == S_TEMPERATURE || screen == S_HUMIDITY);
-
-            display_full_update = 1;
+            next_screen ();
          }
-         return;
+      }
+   }
+   else if (evt & F_EVT_HOLD)
+   {
+      if ((evt & F_BTN_MASK) == F_BTN_MODE)
+      {
+         backlight_set (1); // already on, but restart counter
+         next_screen ();
+      }
+      else if ((evt & F_BTN_MASK) == (F_BTN_MODE | F_BTN_ADJ))
+      {
+         dcf77_schedule_sync ();
+         backlight_set (0); // cut PWM interference to DCF receiver
+      }
+   }
+   else if (evt & F_EVT_RELEASE)
+   {
+      if ((evt & F_BTN_MASK) == F_BTN_MODE)
+      {
+         backlight_set (1); // already on, but restart counter
       }
    }
 
-   // currently unhandled:
+ #if SIMAVR
    put_str ("evt=");
    put_byte_hex (evt);
    put_str ("\r\n");
+ #endif
 }
 
 void

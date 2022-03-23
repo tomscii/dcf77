@@ -40,30 +40,27 @@ pbtn_on_tick ()
 {
    if (pbtn_flags.momentary)
    {
-      if (tick_count < 250)
-         ++ tick_count;
+      ++ tick_count; // no overflow protection needed, reset on HOLD
 
       pbtn_flags.pending_event |= pbtn_flags.momentary;
-      if (tick_count == CNT_THRESH_VERYLONG &&
-          !(pbtn_flags.pending_event & F_EVT_VERYLONG))
+      if (tick_count == 1)
       {
-         pbtn_flags.pending_event |= F_EVT_VERYLONG;
+         pbtn_flags.pending_event |= F_EVT_TOUCH;
          pbtn_flags.ack_event = 0;
       }
-      else if (tick_count == CNT_THRESH_LONG)
+      else if (tick_count == CNT_THRESH_HOLD)
       {
-         pbtn_flags.pending_event |= F_EVT_LONG;
+         pbtn_flags.pending_event &= ~F_EVT_TOUCH;
+         pbtn_flags.pending_event |= F_EVT_HOLD;
          pbtn_flags.ack_event = 0;
+         tick_count = 1; // restart hold cycle
       }
    }
    else if (pbtn_flags.previous)
    {
       // no button is pressed, generate release event
-      if (tick_count < CNT_THRESH_LONG)
-      {
-         pbtn_flags.pending_event = F_EVT_REGULAR | pbtn_flags.previous;
-         pbtn_flags.ack_event = 0;
-      }
+      pbtn_flags.pending_event = F_EVT_RELEASE | pbtn_flags.previous;
+      pbtn_flags.ack_event = 0;
    }
    else
    {

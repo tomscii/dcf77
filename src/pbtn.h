@@ -7,16 +7,20 @@
 #define F_BTN_SET       (1 << 1)
 #define F_BTN_ADJ       (1 << 2)
 
-#define F_EVT_REGULAR   (1 << 4)
-#define F_EVT_LONG      (1 << 5)
-#define F_EVT_VERYLONG  (1 << 6)
+/* Generated events follow this lifecycle:
+ * - a TOUCH event immediately on button press
+ * - a HOLD event every CNT_THRESH_HOLD jiffies, as long as button is held
+ * - a RELEASE event immediately on button release
+ */
+#define F_EVT_TOUCH     (1 << 4)
+#define F_EVT_HOLD      (1 << 5)
+#define F_EVT_RELEASE   (1 << 6)
 
 #define F_BTN_MASK      (F_BTN_MODE | F_BTN_SET | F_BTN_ADJ)
-#define F_EVT_MASK      (F_EVT_REGULAR | F_EVT_LONG | F_EVT_VERYLONG)
+#define F_EVT_MASK      (F_EVT_TOUCH | F_EVT_HOLD | F_EVT_RELEASE)
 
-// length threshold (in jiffies) for long and very long presses
-#define CNT_THRESH_LONG      100
-#define CNT_THRESH_VERYLONG  250
+// button holding period (in jiffies)
+#define CNT_THRESH_HOLD      100
 
 struct pbtn_flags_t
 {

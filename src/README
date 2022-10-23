@@ -1,0 +1,9 @@
+Type 'make' in this directory to compile the firmware.
+
+Type 'make dude' to program the firmware into the device connected to
+the AVR programmer.
+
+
+Keep in mind: the CPU core runs at a clock speed of 250 kHz (much
+lower than usual) to save power. This has a number of implications,
+e.g., the USART runs at a baudrate of 2400.

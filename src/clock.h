@@ -38,8 +38,6 @@ void clock_setup ();
 void clock_adjust (int16_t ppm);
 void clock_adjust_reset ();
 
-void clock_tick ();
-
 void clock_set (const struct clock_t* ref);
 void clock_set_hms (char hours, char minutes, char seconds);
 
